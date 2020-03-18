@@ -2,23 +2,24 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import './index.css';
 
-class Square extends React.Component {
-    /*
-    Square コンポーネントは自分で state （マルバツ）を管理せず、
-    Board コンポーネントから値を受け取って、栗区されたときは
-    そのことを Board コンポーネントに伝えるだけ。
-    こうした場合、Square コンポーネントは Controlled Component (by Board Component) と呼ばれる。
-    */
-    render() {
-        return (
-            <button 
-                className="square" 
-                onClick={()=>this.props.onClick()}
-            >
-                {this.props.value}
-            </button>
-        );
-    }
+/*
+Square コンポーネントは自分で state （マルバツ）を管理せず、
+Board コンポーネントから値を受け取って、栗区されたときは
+そのことを Board コンポーネントに伝えるだけ。
+こうした場合、Square コンポーネントは Controlled Component (by Board Component) と呼ばれる。
+*/
+
+// 関数コンポーネント：renderメソッドだけを有して自分のstateを持たないコンポーネントをシンプルに書ける
+const Square = props => {
+    return (
+        <button
+            className="square"
+            // 関数コンポーネントでは onClick = {() => props.onClick()} は以下のように書ける
+            onClick={props.onClick}
+        >
+            {props.value}
+        </button>
+    );
 }
 
 class Board extends React.Component {
@@ -33,16 +34,20 @@ class Board extends React.Component {
         super(props);
         this.state = { 
             squares : Array(9).fill(null),
+            xIsNext : true,
         };
     }
 
     handleClick = (i) => {
-        /*
-        squares を直接変更せずに、.slice()を呼んで配列のコピーを作成している。
-        */
+
+        // squares を直接変更せずに、.slice()を呼んで配列のコピーを作成している。
         const squares = this.state.squares.slice();
-        squares[i] = '❌';
-        this.setState({squares: squares});
+        if (squares[i] || calculateWinner(squares)){
+            return ;
+        }
+
+        squares[i] = this.state.xIsNext ? '❌' : '⭕️';
+        this.setState({squares: squares, xIsNext: !this.state.xIsNext});
     }
 
     renderSquare(i) {
@@ -59,7 +64,14 @@ class Board extends React.Component {
     }
 
     render(){
-        const status = 'Next player: X';
+        const winner = calculateWinner(this.state.squares);
+        let status;
+        if (winner) {
+            status = 'Winner : ' + winner;
+        } else {
+            // 文字列 + 式 は {} でなく () で囲む
+            status = 'Next player: ' + (this.state.xIsNext ? '❌' : '⭕️');
+        }
 
         return (
             <div>
@@ -98,6 +110,29 @@ class Game extends React.Component {
             </div>
         );
     }
+}
+
+const calculateWinner = squares => {
+    const lines = [
+        [0, 1, 2],
+        [3, 4, 5],
+        [6, 7, 8],
+        [0, 3, 6],
+        [1, 4, 7],
+        [2, 5, 6],
+        [0, 4, 8],
+        [2, 4, 6],
+    ];
+
+    for (let i=0; i < lines.length; i++){
+        const [a, b, c] = lines[i]
+        // squares[a] === squares[b] === squares[c] は無理
+        if (squares[a] && squares[a] === squares[b] && squares[a] === squares[c]){
+            return squares[a];
+        }
+    }
+
+    return null;
 }
 
 ReactDOM.render(
