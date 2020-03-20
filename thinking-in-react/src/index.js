@@ -54,6 +54,8 @@ class ProductTable extends React.Component {
     render() {
         const rows = [];
         let lastCategory = null;
+        // .forEach でなく .map も使える
+        // map の場合、何かを return しないと warning が出る
         this.props.products.forEach(product => {
             // indexOf で検索文字列が商品名に含まれているかの判定ができる
             if (product.name.indexOf(this.props.filterText) === -1){
@@ -115,7 +117,25 @@ class FilterableProductTable extends React.Component {
         this.setState({inStockOnly : e.target.checked})
     }
 
+    // データモデルのカテゴリがばらばらだったときのためにソートを実装
+    compare = (a, b) => {
+        // Use toUpperCase() to ignore character casing
+        const categoryA = a.category.toUpperCase();
+        const categoryB = b.category.toUpperCase();
+      
+        let comparison = 0;
+        if (categoryA > categoryB) {
+          comparison = 1;
+        } else if (categoryA < categoryB) {
+          comparison = -1;
+        }
+        return comparison;
+      }
+
     render() {
+
+        const products = this.props.products.sort(this.compare);
+
         return (
             <div>
                 <div>
@@ -126,7 +146,7 @@ class FilterableProductTable extends React.Component {
                     onCheckChange={this.handleCheckChange}
                 />
                 <ProductTable 
-                    products={this.props.products}
+                    products={products}
                     filterText={this.state.filterText}
                     inStockOnly={this.state.inStockOnly}/>
                 </div>
@@ -137,10 +157,10 @@ class FilterableProductTable extends React.Component {
 
 const PRODUCTS = [
     {category: 'Sporting Goods', price: '$49.99', stocked: true, name: 'Football'},
+    {category: 'Electronics', price: '$399.99', stocked: false, name: 'iPhone 5'},
     {category: 'Sporting Goods', price: '$9.99', stocked: true, name: 'Baseball'},
     {category: 'Sporting Goods', price: '$29.99', stocked: false, name: 'Basketball'},
     {category: 'Electronics', price: '$99.99', stocked: true, name: 'iPod Touch'},
-    {category: 'Electronics', price: '$399.99', stocked: false, name: 'iPhone 5'},
     {category: 'Electronics', price: '$199.99', stocked: true, name: 'Nexus 7'}
   ];
 
