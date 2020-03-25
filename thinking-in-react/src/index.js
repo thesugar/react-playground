@@ -2,6 +2,39 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import './index.css';
 
+// context を使ってみる
+const themes = {
+    light: {
+      background: '#fff',
+      color : '#000',
+    },
+    dark: {
+      background: '#000',
+      color: '#fff',
+    },
+};
+
+const Settings = React.createContext({
+    theme : themes.dark,
+    toggleTheme : () => {},
+});
+
+const ThemeTogglerButton = () => {
+    // ThemeTogglerButton は theme のみならず、toggleTheme 関数もコンテクストから受け取る
+    // Consumer の使い方：<HogeContext.Consumer>{value => コンテクストの値に基づいて何かをレンダーする}</HogeContext.Consumer>
+    return (
+        <Settings.Consumer>
+            {({theme, toggleTheme}) => (
+                <button
+                onClick={toggleTheme}
+                style={{backgroundColor : theme.background, color: theme.color}}>
+                    Toggle Theme
+                </button>
+            )}
+        </Settings.Consumer>
+    );
+}
+
 class SearchBar extends React.Component {
     render() {
         return (
@@ -51,6 +84,7 @@ class ProductRow extends React.Component {
 }
 
 class ProductTable extends React.Component {
+
     render() {
         const rows = [];
         let lastCategory = null;
@@ -84,6 +118,7 @@ class ProductTable extends React.Component {
         });
 
         return (
+            <React.Fragment>
             <table>
                 <thead>
                     <tr>
@@ -95,6 +130,8 @@ class ProductTable extends React.Component {
                     {rows}
                 </tbody>
             </table>
+            <ThemeTogglerButton />
+            </React.Fragment>
         )
     }
 }
@@ -102,7 +139,21 @@ class ProductTable extends React.Component {
 class FilterableProductTable extends React.Component {
     constructor(props){
         super(props);
+
+        // 親コンポーネント（本コンポーネント）で、contextをいじる関数を定義する
+        this.toggleTheme = () => {
+            this.setState(state => ({
+                theme :
+                    state.theme === themes.dark
+                    ? themes.light
+                    : themes.dark,
+            }));
+        }
+
+        // context をいじる関数を state に含めて render 内で Provider に渡す
         this.state = {
+            theme : themes.light,
+            toggleTheme : this.toggleTheme,
             filterText : '',
             inStockOnly : false,
         }
@@ -137,7 +188,8 @@ class FilterableProductTable extends React.Component {
         const products = this.props.products.sort(this.compare);
 
         return (
-            <div>
+            // state は全部 Provider に渡される
+            <Settings.Provider value={this.state}>
                 <div>
                 <SearchBar
                     filterText={this.state.filterText}
@@ -150,7 +202,7 @@ class FilterableProductTable extends React.Component {
                     filterText={this.state.filterText}
                     inStockOnly={this.state.inStockOnly}/>
                 </div>
-            </div>
+            </Settings.Provider>
         )
     }
 }
