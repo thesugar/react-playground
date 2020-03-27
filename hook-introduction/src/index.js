@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useReducer } from 'react';
+import React, { useState, useEffect, useContext, useReducer, useRef } from 'react';
 import ReactDOM from 'react-dom';
 
 /*
@@ -109,6 +109,21 @@ const CounterWithReducer = () => {
     );
 }
 
+// useRef を使う
+const TextInputWithFocusButton = ()  => {
+    const inputEl = useRef(null);
+    const onButtonClick = () => {
+        inputEl.current.focus();
+    };
+
+    return (
+        <>
+            <input ref={inputEl} type="text" />
+            <button onClick={onButtonClick}>Focus the input</button>
+        </>
+    );
+}
+
 const App = () => {
     return (
         <React.Fragment>
@@ -119,8 +134,11 @@ const App = () => {
             <ThemeContext.Provider value={themes.dark}>
                 <ToolBar />
             </ThemeContext.Provider>
-
+            
             <CounterWithReducer reducer={reducer} />
+
+            <br />
+            <TextInputWithFocusButton />
         </React.Fragment>
     )
 }
