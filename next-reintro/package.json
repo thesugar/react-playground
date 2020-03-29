@@ -1,0 +1,19 @@
+{
+  "name": "next-reintro",
+  "version": "1.0.0",
+  "description": "re introduction to next.js",
+  "author": "thesugar",
+  "license": "MIT",
+  "dependencies": {
+    "isomorphic-unfetch": "^3.0.0",
+    "next": "^9.3.2",
+    "react": "^16.13.1",
+    "react-dom": "^16.13.1",
+    "swr": "^0.1.18"
+  },
+  "scripts": {
+    "dev": "next",
+    "build": "next build",
+    "start": "next start"
+  }
+}
