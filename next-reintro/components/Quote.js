@@ -1,15 +1,16 @@
 import useSWR from 'swr';
+import { useRouter } from 'next/router';
 
 const fetcher = url => {
     return fetch(url).then(r => r.json());
 }
 
 const Quote = () => {
-    const fetcher = url => {
-        return fetch(url).then(r => r.json());
-    }
-    
-    const { data, error } = useSWR('../pages/api/randomQuote'. fetcher);
+    const { query } = useRouter();
+    const { data, error } = useSWR(
+        `../api/randomQuote${query.author ? '?author=' + query.author : ''}`, 
+        fetcher
+    );
     
     // hoge?.fuga is the same as `hoge && hoge.fuga`
     const author = data?.author;
