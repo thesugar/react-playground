@@ -39,11 +39,11 @@ export async function getStaticProps(context) {
 ```
 
 `context` パラメータは以下のキーを含むオブジェクト。
-    - `params`: 動的ルーティングを使っているページのルートパラメータ。例えば、
-    ページの名前が `[id].js` なら、`params` は `{ id : ...}` のようになる。
-    これを利用するときは `getStaticPaths` と一緒に使うべきである。
-    - `preview`：ページがプレビューモードなら `true`、そうでなければ `false`
-    - `previewData`：`setPreviewData` によってセットされるプレビューデータ。
+- `params`: 動的ルーティングを使っているページのルートパラメータ。例えば、
+ページの名前が `[id].js` なら、`params` は `{ id : ...}` のようになる。
+これを利用するときは `getStaticPaths` と一緒に使うべきである。
+- `preview`：ページがプレビューモードなら `true`、そうでなければ `false`
+- `previewData`：`setPreviewData` によってセットされるプレビューデータ。
 
 #### いつ `getStaticProps` を使うべきか？
 - レンダーに必要なデータが、ユーザーからのリクエストに先立って、ビルド時には手元にあるとき
@@ -282,4 +282,159 @@ function Profile() {
     if (!data) return <div>loading... </div>
     return <div> hello {data.name}! </div>
 }
+```
+
+## Built-In CSS Support
+
+### Adding a Global Stylesheet
+アプリケーションにスタイルシートを加えるには、CSS ファイルを `pages/_app.js` にインポートする。
+
+```javascript
+import '../styles.css'
+
+export default function MyApp({ Component, pageProps }) {
+    return <Component {...pageProps} />
+}
+```
+
+### Adding Component-Level CSS
+Next.js は、 `[name].module.css` という命名規則を使った CSS モジュールをサポートしている。  
+
+CSSモジュールは、自動的に一意のクラス名を作成することで CSS をローカルにスコープする。これにより、異なるファイルで同じ CSS クラス名を使える。  
+CSS モジュールはコンポーネントレベルの CSS を含めるのに理想的な方法である。CSS モジュールファイルは、アプリのどこにでもインポートすることができる。  
+
+たとえば、 `components/` フォルダの `Button` というコンポーネントについて、  
+まず、 `components/Button.module.css` を以下の内容で作成する。
+
+```css
+.error {
+    color: white;
+    background-color: red;
+}
+```
+
+次に、`components/Button.js` を作成する。そのとき、上の CSS ファイルをインポートして使う。
+
+```javascript
+import styles from './Button.module.css';
+
+export function Button() {
+    return (
+        <button
+          type="button"
+          // "error" クラスは、インポートされた `styles` オブジェクトの
+          // プロパティとしてアクセスされていることに注目
+          className={styles.error}
+        >
+        Destroy
+        </button>
+    )
+}
+```
+
+### CSS-in-JS
+既存の CSS-in-JS のやり方も可能。一番シンプルなのは以下。
+
+```javascript
+function HiThere() {
+    return <p style={{ color: 'red'}}>hi there </p>
+}
+
+export default HiThere
+```
+
+#### styled-jsx
+
+```javascript
+function HelloWorld(){
+    return (
+        <div>
+            Hello world
+            <p> scoped </p>
+            <style jsx>{`
+                p {
+                    color: blue;
+                }
+                div {
+                    background: red;
+                }
+            `}</style>
+            <style global jsx>{`
+                body {
+                    background: black;
+                }
+            `}</style>
+        </div>
+    )
+}
+
+export default HelloWorld
+```
+
+### Sass も使える
+`.scss` と `.sass` の両方の拡張子が使える。当然ながら、`npm install sass (yarn add sass)` をしてから使う必要あり。
+
+## Static File Serving
+画像などの静的ファイルは、ルートディレクトリ直下の `public` フォルダに入れること。`public` の中のファイルはベース URL (`/`) から参照できるようになる。  
+
+たとえば、 `public/my-image.png` という画像があれば、以下コードのように画像にアクセス可能。
+
+```javascript
+const MyImage = () => {
+    return <img src="/my-image.png" alt="my image" />
+}
+```
+
+また、`public` フォルダは `robots.txt` にも使えるし、その他、`.html` を含め、どんな静的ファイルでも置くことができる。
+
+## TypeScript
+まずは、空の `tsconfig.json` ファイルをプロジェクトのルートに作成する。  
+（`yarn add --dev typescript @types/react @types/node` してから `yarn dev` しても自動的に `tsconfig.json` が作成される！）  
+Next.js はこのファイルをデフォルト値で自動的に設定する。独自の `tsconfig.json` をカスタムコンパイラオプションで提供することもサポートされている。
+続いて、 `yarn dev` とすることで、必要なパッケージのインストールガイドがコンソールに表示される。（`yarn add --dev typescript @types/react @types/node`)  
+
+`next-env.d.ts` というファイルがプロジェクトのルート直下に作られる。これは削除しないこと。  
+また、Next.js の `strict` モードはデフォルトでは無効になっているが、TypeScript に慣れてきたら有効にすることを推奨する。
+
+### Static Generation and Server-side Rendering
+
+```typescript
+import { GetStaticProps, GetStaticPaths, GetServerSideProps } from 'next';
+
+export const getStaticProps: GetStaticProps = async context => {
+    // ...
+}
+
+export const getStaticPaths: GetStaticPaths = async () => {
+    // ...
+}
+
+export const getServerSideProps: GetServerSideProps = async context => {
+    // ...
+}
+```
+
+### API Routes
+```typescript
+import { NextApiRequest, NextApiResponse } from 'next';
+
+type Data = {
+    name: string
+}
+
+export default (req: NextApiRequest, res: NextApiResponse<Data>) => {
+    res.status(200).json({ name: 'John Doe' })
+}
+```
+
+### Custom `App`
+
+```typescript
+import { AppProps } from 'next/app';
+
+function MyApp({ Component, pageProps }: AppProps) {
+    return <Component {...pageProps} />
+}
+
+export default MyApp
 ```
