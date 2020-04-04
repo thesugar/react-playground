@@ -111,7 +111,7 @@ const DynamicComponentWithNoSSR = dynamic(
 )
 ```
 
-### Automatic Static Optimization
+## Automatic Static Optimization
 ページが静的かどうかの自動判定機能。ページに `getInitialProps` があるかないかで判定される（ドキュメントママ。今は `getServerSideProps` とかを見てるのかな？）  
 
 `getInitialProps` が存在する場合、 Next.js はデフォルトの動作を使用し、リクエストごとにページをレンダリングする（サーバーサイドレンダリング）。  
