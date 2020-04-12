@@ -123,51 +123,222 @@ declare function useState<T>(
     initialValue: T
 ):[T, (updator: UseStateUpdatorArgument<T>) => void];
 
+// 3-1 配列から Map を作る
+
+/*
+今回、mapFromArrayは2つの型引数を持つ。
+1つ目は T で、これは渡される配列の要素の型（オブジェクト）である。
+2つ目は K で、2 つ目の引数の型です。これは使用するプロパティ名を表すリテラル型を期待している。引数 key で指定されるプロパティ名は T が持つプロパティの名前でなければならないため、型引数の制約にそのことを書く。
+それが `K extends keyof T`の部分。これは K が keyof T の部分型でなければいけないということを示しており、keyof T は T が持つプロパティ名いずれかの型です。今回の使用例では、Tは {id: number; name: string} なので keyof T は "id" | "name" となる。
+Kはその部分型（つまり "id" | "name" に当てはめることができる型）なので、"id" や "name"、"id" | "name" などが可能。問題の使用例では mapFromArray(data, "id") として使用されているため、K には "id" という型が入る。
+
+返り値の Map 型は2つの型引数をとる型です。1 つ目はキーの、2 つ目は値の型です。今回、Map のキーとなるのは各オブジェクト obj の、keyで指定されたプロパティ、すなわち obj[key] の型です。例えば key が "id" の場合は obj["id"] の型となる。
+いまオブジェクトの型は T で、キーの名前はリテラル型として K に入っているため、プロパティアクセス型を用いて obj[key] の型は T[K] と表現できる。
+
+Map に入る値はオブジェクトそのものなので、2 つ目の型引数は普通に T です。
+
+なお、今回は返り値の型のアノテーション（Map<T[K], T>）を省略してしまうとTypeScriptが推論できず、Map<any, any>にされてしまう。
+このように型アノテーションで指示する方法の他に、new Map() を new Map<T[K], T>() として型を教えてあげる方法もある。
+*/
+
+function mapFromArray<T, K extends keyof T> (arr: T[], key: K): Map<T[K], K> {
+    const result = new Map();
+    for (const obj of arr) {
+        result.set(obj[key], obj);
+    }
+    return result;
+}
+
+const data = [
+    { id: 1, name: 'sugar' },
+    { id: 2, name: 'salt' },
+    { id: 20, name: 'kohh' },
+    { id: 100, name: 'hannya' }
+]
+
+const dataMap = mapFromArray(data, 'id');
+console.log(dataMap);
+
+// 3-2
+// オブジェクトの型を渡されると、その各プロパティを全部省略可能にするもの
+//　💪Mapped Typesの基本的な使い方
+// keyof T に属する各プロパティ名 K に対して、型 T[K] を持つ K という省略可能なプロパティが
+// 存在するようなオブジェクトの型が MyPartial<T> である。
+type MyPartial<T> = {[K in keyof T]?: T[K]};
+
+type T1 = MyPartial<{
+    foo: number;
+    bar: string;
+}>;
+
+const t1:T1 = {
+    foo: 20,
+    bar: "ja"
+};
+
+console.log(t1);
+
+// 3-3 イベント
+interface EventPayloads {
+    start: {
+        user: string;
+    };
+
+    stop: {
+        user: string;
+        after: number;
+    };
+
+    end: {};
+}
+
+// 引数に渡された文字列に応じて（"start", "stop" , "end"）型の挙動を変えたい場合は
+// その文字列をリテラル型として取得するのが定番。　Ev extends keyof E とすることで
+// E に定義されていないイベント名を拒否する。
+class EventDischarger<E> {
+    emit<Ev extends keyof E>(eventname: Ev, payload: E[Ev]) {
+        // 省略...
+    }
+}
+
+// 3-4 reducer
+
+// アクションの型を Action とし、ユニオン型を用いて定義する。
+// 代数的データ型を模したパターン。TypeScriptでは頻出。
+type Action =
+    | {
+        type: "increment";
+        amount: number;
+    }
+    | {
+        type: "decrement";
+        amount: number;
+    } |
+    {
+        type: "reset";
+        value: number;
+    };
+
+const reducer = (state: number, action: Action) => {
+    switch (action.type) {
+        case "increment":
+            return state + action.amount;
+        
+        case "decrement":
+            return state - action.amount;
+
+        case "reset":
+            return action.value;
+    }
+};
+
+// 3-5
+// ↓これでもよさげ。。。？
+// type Func<A, R> = (arg: A extends undefined ? void | undefined : A) => R;
+
+type Func<A, R> = undefined extends A ? (arg?: A) => R : (arg: A) => R;
+// undefined extends A は undefined 型が A 型の部分型であるという条件を表している
+// これは A が undefined を受け入れる型であるかどうかを判定しているということ。
+// A が undefined である場合のほか、 A が number | undefined の場合も合致する。
+
+const f1: Func<number, number> = num => num + 10;
+const v1: number = f1(10)
+
+const f2: Func<undefined, number> = () => 0;
+const v2: number = f2();
+const v3: number = f2(undefined);
+
+const f3: Func<number | undefined, number> = num => (num || 0) + 10;
+const v4: number = f3(123);
+const v5: number = f3();
+
+// error example
+//const v6: number = f1();
+
 
 const Practice: NextPage = () => (
     <div>
         <h1>TypeScript の練習</h1>
-        <p>
             <h2># 1</h2> 
+            <h3>
             {isPositive(3) ? 'true' : 'false'}
-        </p>
-        <p>
+            </h3>
             <h2># 2</h2>
+            <h3>
             {showUserInfo({name: 'John', age: 16, private: false})}
-        </p>
-        <p>
+            </h3>
             <h2># 3</h2>
+            <h3>
             {isPositive2(5) ? 'true': 'false'}
-        </p>
-        <p>
+            </h3>
             <h2># 4</h2>
-            {sumOfPos([10, 90, -2, 0, -20])}<br />
-        </p>
-
-        <p>
+            <h3>
+            {sumOfPos([10, 90, -2, 0, -20])}
+            </h3>
             <h2># 5</h2>
+            <h3>
+            <ul>
             {myFilter([1, 2, 3, 4, 5], num => num % 2 === 0).map((v, i) =>
-                 <div>{i} th element is {v}</div>)}
+                 <li key={i}>{i} th element is {v}</li>)}
             {myFilter(['foo', 'hoge', 'bar'], str => str.length >= 4).map((v, i) =>
-                <div>{i} th element is {v}</div>)}
-        </p>
-
-        <p>
+                <li key={i}>{i} th element is {v}</li>)}
+            </ul>
+            </h3>
             <h2># 6</h2>
+            <h3>
             {slowSpeed} <br />
             {mediumSpeed}
-        </p>
-
-        <p>
+            </h3>
             <h2># 7</h2>
+            <h3>
             省略
-        </p>
-
-        <p>
+            </h3>
+ 
             <h2># 8</h2>
+            <h3>
             {obj1.foo}<br />
             {obj1.id}<br />
-        </p>
+            </h3>
+            <h2># 3-1</h2>
+            <h3>配列から Map を作る<br />
+            {dataMap.size}
+            </h3>
+            <h2># 3-5</h2>
+            <h3>
+                {v1}/{v2}/{v3}/{v4}/{v5}
+            </h3>
+            <style jsx>
+            {`
+            div {
+                background-color: #fff;
+                opacity: 
+            }
+
+            h1 {
+                color: blue;
+                background-color: pink;
+                margin: 20px;
+                padding: 10px;
+                align: center;
+                font-family: Tahoma;
+            }
+
+            h2 {
+                color: green;
+                background-color: black;
+                opacity: 70%;
+                font-family: Palatino;
+                margin: 20px;
+                padding: 10px;
+            }
+
+            h3 {
+                font-family: Tahoma;
+                margin: 20px;
+                paddding: 10px;
+            }
+            `}
+            </style>
     </div>
 );
 
