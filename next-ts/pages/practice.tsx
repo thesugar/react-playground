@@ -255,6 +255,43 @@ const v5: number = f3();
 // error example
 //const v6: number = f1();
 
+// 以下は TS 型入門の内容
+interface Hoge {
+    foo: string;
+    bar: number;
+}
+
+interface Piyo {
+    foo: number;
+    baz: boolean;
+}
+
+type HogePiyo = Hoge | Piyo;
+
+function someFunc(obj: Hoge | Piyo): void {
+    // obj は Hoge | Piyo 型なので、Hoge, Piyo どちらなのか特定したい
+    if ('string' === typeof obj.foo) {
+        // bar プロパティがあるということは Hoge 型
+        console.log('Hoge', obj.foo);
+        console.log(typeof obj);
+    } else {
+        // bar プロパティがないのでここでは obj は Piyo 型
+        console.log('Piyo', obj.foo);
+        console.log(typeof obj);
+    }
+}
+
+someFunc({foo: 100, baz: true, bar:30});
+
+function nullCheck(value: string | null): number {
+    if (value !== null) {
+        return value.length;
+    } else {
+        return 0;
+    }
+}
+
+console.log(nullCheck('にゃんにゃか．'));
 
 const Practice: NextPage = () => (
     <div>
