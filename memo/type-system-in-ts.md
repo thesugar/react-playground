@@ -631,3 +631,303 @@ const res = func({
 
 この辺りの処理は扱いが難しいためか、関数のオーバーロードがある場合やジェネリクスが関わる場合などに引数の型が推論できなかったりするなど、多少制限があるようだ。
 
+## オブジェクト型再訪
+オブジェクト型は「プロパティ名: 型;」という定義の集まりだったが、実はプロパティに対して修飾子を付けることができる。修飾子は `?` と `readonly` の 2 種類ある。
+
+### `?`: 省略可能なプロパティ
+`?` を付けて宣言したプロパティは省略可能になる。
+
+```ts
+interface MyObj {
+    foo: string;
+    bar?: number;
+}
+
+const obj: MyObj = {
+    foo: 'nyan';
+}
+```
+上記の例では bar が省略可能なプロパティになる。  
+実際の JavaScript では存在しないプロパティにアクセスしようとすると undefined が返るため、bar プロパティの型は `number | undefined` になる。このように、`?` 修飾子を付けられたプロパティは自動的に `undefined` 型との union 型になる。よって、それを使う側は undefined チェックを行う必要がある。
+
+```ts
+function func(obj: MyObj) {
+    // === undefined でもチェックできる。
+    // null でチェックするなら以下のように != null と書く。（!== null とやってしまうと undefined は !== null が true として評価されるので obj.bar*100 を実行しようとして、「undefinedかもよ」というエラーになる。）
+    return obj.bar != null ? obj.bar*100 : 0
+}
+```
+
+ちなみに、`?` を使わずに自分で bar の型を `number | undefined` と定義すれば同じ意味になるかというとそうはならない。`?` を使わない場合は、たとえ undefined が許されているプロパティでもきちんと宣言しないといけない（省略不可能）。
+
+### `readonly`
+これを付けて宣言されたプロパティは再代入できなくなる。const のプロパティ版みたいなもの。
+
+```ts
+interface MyObj {
+    readonly foo: string;
+}
+
+const obj: MyObj = {
+    foo: 'fixed',
+}
+
+obj.foo = 'change!' // 🛑エラー！
+```
+
+ただし、readonly への過信は禁物。readonly でない型を経由して書き換えることができてしまう。
+
+```ts
+interface MyObj {
+    readonly foo: string;
+}
+
+interface MyObj2 {
+    foo: string;
+}
+
+const obj: MyObj = { foo: 'before', }
+const obj2: MyObj2 = obj;
+
+obj2.foo = 'after!';
+
+console.log(obj.foo); // 'after!'
+```
+
+### インデックスシグネチャ
+オブジェクト型には他の記法もある。その一つがインデックスシグネチャ。
+
+```ts
+interface MyObj {
+    // この記法！
+    [key:string] : number;
+}
+
+const obj: MyObj = {};
+
+const num: number = obj.foo;
+const num2: number = obj.bar;
+```
+
+`[key: string] : number;` のように書くと、`string` 型であるような任意のプロパティ名に対して `number` 型を持つという意味になる。obj にそのような型を与えたので、 `obj.foo` や `obj.bar` などはみんな `number` 型を持つ。  
+
+これは便利だが危ない。上の例では obj は実際には `{}` なので `obj.foo` などは undefined のはずだがその可能性が無視されてしまう。最近の JavaScript では、インデックスシグネチャの利用は回避することができる。オブジェクトを辞書として使いたければインデックスシグネチャの代わりに Map を使ったり、配列の場合は、インデックスによるアクセスを避けて for-of 文を使うなどの方法がある。
+
+### 関数シグネチャ
+オブジェクト型の記法で関数型を表現する方法がある。
+
+```ts
+interface Func {
+    (arg: number): void;
+}
+
+const f: Func = (arg: number)=> { console.log(arg); };
+```
+
+この記法は通常のプロパティの宣言と同時に使うことができるため、「関数だが同時に特定のプロパティを持っているようなオブジェクト」を表すことができる。さらに、複数の関数シグネチャを書くことができ、それによってオーバーローディングを表現できる。
+
+```ts
+interface Func {
+    foo: string;
+    (arg: number): void;
+    (arg: string): string;
+}
+```
+
+この型が表す値は、`string` 型の foo プロパティを持つオブジェクトであり、かつ `number` 型を引数に関数として呼び出すことができその場合は何も返さず、`string` 型を引数として呼び出すこともできてその場合は `string` 型の値を返すような関数、ということになる。（この interface を実装する場合は引数を `arg: number | string` で定義して、関数の中で typeof arg を見て条件分岐すればよさげ）
+
+### new シグネチャ
+コンストラクタであることを表すシグネチャもある。
+
+```ts
+interface Ctor<T> {
+    // new() すると T 型の値が返る
+    new(): T;
+}
+
+// このクラス Foo は new すると Foo のインスタンス（もちろん Foo 型）が返されるので、
+// Ctor<Foo> に代入可能。
+class Foo {
+    public bar: number | undefined;
+}
+
+const f: Ctor<Foo> = Foo;
+```
+
+## `as` によるダウンキャスト
+これは TypeScript 独自の構文で、「式 as 型」と書く。ダウンキャストというのは、派生型の値を部分型として扱うためのもの。
+
+```ts
+const value = rand();
+
+const str = value as number;
+console.log(str * 10);
+
+function rand(): string | number {
+    if (Math.random() < 0.5) {
+        return 'hello';
+    } else {
+        return 123;
+    }
+}
+```
+
+上記の例で value は `string | number` 型の値だが、`value as number` の構文により `number` 型として扱っている。よって変数 str は `number` 型になる。  
+だがこれは安全ではない。実際には str には文字列が入ってしまう可能性もあるため。`as` は危険なので本当に必要な場面以外で使用するのは回避したほうがよい。
+
+## readonly な配列とタプル
+配列型やタプル型においても `readonly` の概念が存在する。readonly な配列は `readonly T[]` のように書く（`T` は要素の型）。
+
+```ts
+const arr: readonly number[] = [1, 2, 3];
+
+arr[0] = 100; // 🛑 Error : arr の要素を書き換えるのは error
+arr.push(10); // 🛑 Error : readonly 配列型には push などの書き換えメソッドは存在しない
+```
+
+`readonly` な配列のプロパティを書き換えようとするとエラーになる。また、`readonly` な配列は、`push` などの配列を破壊的に書き換えるメソッドは除去されており使うことができない。この 2 つの機能により `readonly` 配列の書き換え不可能性を型システム上で担保している。  
+
+なお、`readonly T[]` 型は `ReadOnlyArray<T>` と書くこともできる。  
+
+readonly なタプルも同様に、タプルの前に `readonly` をつけて表現する。そうすると、タプルの各要素を書き換えることはできなくなる。
+
+```ts
+const tuple: readonly [string, number] = ['foo', 123];
+tuple[0] = 'bar' // 🛑 Error!
+```
+
+### `as const`
+`readonly` 絡みの話題として `as const` がある。これは TypeScript に型推論の方法を指示するための構文。
+
+`as const` は各種リテラル（文字列・数値・真偽値・オブジェクトリテラル・配列リテラル）に付加することができ、 *その値が書き換えを意図していない* 値であることを表す。
+
+```ts
+const obj = {
+    foo: '123',
+    bar: [1, 2, 3]
+}
+// obj は { foo: string; bar: number[] } 型
+```
+まず、普通に書いた（`as const` 無し）`obj` の型は `{ foo: string; bar: number[] }` 型となっている。`foo`プロパティの型は '123' 型ではなく string 型として推論されている。つまり、リテラル型にはなっておらず、`obj.foo = '456'` のように書き換えることができてしまう。  
+
+さて、ではここで `as const` をつけるとどうなるか。
+
+```ts
+const obj2 = {
+    foo: '123',
+    bar: [1, 2, 3]
+} as const;
+// obj2 は { readonly foo: '123'; readonly bar: readonly [1, 2, 3]};
+```
+
+`as const` をオブジェクトリテラルにつけると、`as const` は再帰的に（オブジェクトの中身にも）適用されるため、`foo` プロパティは `'123'` 型になり、foo のプロパティ自体も `readonly` になる。`bar` プロパティも同様で、配列リテラルに `as const` を使用すると対応する `readonly` **タプル型** が推論される。 
+  
+このように、`as const` はリテラルの型推論で型を広げて欲しくないときに使用することができる。
+
+## `object` 型と `{}` 型
+`object` 型は「プリミティブ以外の値の型」。JavaScript にはオブジェクトのみを引数に受け取る関数があり、そのような関数を表現するための型。例えば、`Object.create` は引数としてオブジェクトまたは null のみを受け取る関数。  
+
+ところで、`{}` という型について考えてみよう。これは、何もプロパティが無いオブジェクト型。プロパティが無いと言っても、構造的部分型により、`{foo: string}` のような型を持つオブジェクトも `{}` 型として扱うことができる。  
+（ **復習**　構造的部分型について：`interface A = { hoge: string }`、`interface B = { hoge: string; fuga: number }` のような 2 つの型があった場合、A に比べてプロパティが多い B は、（B ⊂ A という関係から）A の部分型であり、A の型を持つ値として振る舞える）
+
+```ts
+const obj = { foo: 'foo' };
+const obj2: {} = obj;
+```
+
+となると、任意のオブジェクトを表す型として `{}` ではダメなのか？　答えは *ダメ* で、`{}` という型はオブジェクト以外も受け付けてしまう（ただし、undefined と null は除く）。
+
+これは JavaScript の仕様上、プリミティブに対してもプロパティアクセスができることと関係している。（プリミティブ型もある意味オブジェクトっぽく扱ってるから `{}` はなんでも受け入れるっていう意味？）  
+
+いずれにしても、 `{}` は undefined と null 以外はなんでも受け入れてしまうような弱い型であり、オブジェクトを表す型として使用するのは適切ではない。
+
+## weak type
+オプショナルなプロパティ（`?` 修飾子つきで宣言されたプロパティ）しかない型にも同様の問題がある。そのような型は、関数に渡すためのオプションオブジェクトの型としてよく登場する。  
+
+そこで、そのような型は **weak type** と呼ばれ、特殊な処理が行われる。
+
+```ts
+interface Options {
+    foo?: string;
+    bar?: number;
+}
+
+const obj1 = { hoge: 3 };
+const obj2: Options = obj1; // 🛑 Error!
+const obj3: Options = 5;    // 🛑 Error!
+```
+
+最後の 2 行に対するエラーは weak type に特有のもの。obj2 の行は、`{ hoge: number; }` 型の値を `Options` 型の値として扱おうとしているがエラーになっている。構造的部分型の考えに従えば、`{ hoge: number; }` 型のオブジェクトは foo と bar が省略されており、余計なプロパティ hoge を持った `Options` 型のオブジェクトとみなせそうだが、weak type 特有のルールによりこれは認められない。  
+具体的には、weak type の値として認められるためには *weak type が持つプロパティを1 つ以上持った型である必要がある* 。例外的に、 `{}` は `Options` 型の値として扱える。  
+
+また、weak type はオブジェクトでないものも同様に弾いてくれる。
+
+## unknown
+`{}` は弱い型であると述べたが、本当に最も弱い型である `unknown` 型がある。*どんな型の値も unknown 型として扱うことができる* 。これはいわゆる **top型** で、never 型のちょうど逆にあたる、 *すべての型を部分型として持つ* ような、部分型関係の頂点にある型（never は任意の型の部分型であり、どんな値も never 型の変数に入れることはできない一方、どんな型にも never 型の値を入れることができる。）。
+
+```ts
+const u1: unknown = 3; // 数値のリテラルを入れたり
+const u2: unknown = null; // null を入れたり
+const u3: unknown = (foo: string)=> true; // 関数を入れたり
+```
+
+任意の値を取ることができるというのは any 型と同じ特徴だが、unknown 型は any 型と異なり安全に扱うことができる。というのも、unknown 型の値はどんな値なのかわからないため、できることが制限されている。たとえば、数値の足し算をすることもできなければプロパティアクセスもできない。
+
+```ts
+const u: unknown = 3;
+const sum = u + 5; // 🛑 Error!
+const p = u.prop; // 🛑 Error!
+```
+
+つまり、どんな値かわからない（unknown）ということは、その値に対して何もできないということを意味している。any 型の場合は好き勝手扱えて危険なので、代わりに unknown 型を使うことが有効。  
+
+unknown 型の値を使うときは、型の絞り込みができる。これにより、unknown 型の値として受け取った値が特定の型のときにのみ処理をすることが可能になる。
+
+```ts
+const u: unknown = 3;
+
+if (typeof u === 'number') {
+    const foo = u + 5;
+}
+```
+
+また、クラスの型と instanceof を組み合わせることによる絞り込みも可能。
+
+```ts
+class MyClass {
+    public prop: number = 10;
+}
+
+const u: unknown = new MyClass();
+
+if (u instanceof MyClass) {
+    u.prop;
+}
+```
+
+### unknown 型と void 型の関係
+`unknown` 型と `void` 型は似ているところがある。それは関数の返り値の型として `void` 型が登場する場合に現れる。次の例は正しいコード（コンパイルエラーが起きない）である。
+
+```ts
+const func1: () => number = () => 123;
+
+const f: (() => void) = func1;
+```
+
+ここで、`func1` は `() => number` 型、つまり数値を返す関数である。上の例ではこれを `() => void` 型として扱ってもよいということを表している。  
+
+これが `void` 型の特殊なところで、 **部分型関係において `void` 型は `unknown` 型と同様の振る舞い**（どんな型の値も void 型とみなせる）をする（ただし、`void` 型を（関数の返り値などではなく）直に扱う場合は追加の制限が入る）。
+
+これは特に、アロー関数と組み合わせた場合に役に立つ挙動。`func1` を呼びたいけど返り値には興味がない場合、`() => func1()` のようアロー関数を作るとこれは `() => number` 型となる。しかし返り値はどうでもいいので気持ち的にはこれは `() => void` 型とも言え、この気持ちを表現するためにこのような関数を `() => void` 型として扱えるようになっている。  
+
+これは裏を返せば **返り値が `void` 型の関数の返り値は何が入っているのかまったくわからない** ということになる。
+上の例に続いて以下を実行すると、一見 void 型に見える voidValue には実は 123 が入っている。
+
+```ts
+const voidValue: void = f();
+console.log(voidValue); // 123
+```
+
+なので、`void` 型の値を得てもそれが `undefined` である保証すら無いということになる。`void` 型を持つ値の挙動はやはり `unknown` 型と似ており、基本的に使うことができない（`unknown` 型として使うことはできる）。  
+
+以上より、`void` 型というのは `unknown` にさらに追加の制限が加わった型という見方ができる。
