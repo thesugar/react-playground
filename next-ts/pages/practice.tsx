@@ -255,7 +255,13 @@ const v5: number = f3();
 // error example
 //const v6: number = f1();
 
+/////////////////////////
+//
 // 以下は TS 型入門の内容
+//
+/////////////////////////
+
+
 interface Hoge {
     foo: string;
     bar: number;
@@ -292,6 +298,64 @@ function nullCheck(value: string | null): number {
 }
 
 console.log(nullCheck('にゃんにゃか．'));
+
+interface OptionalNyan {
+    wan: string;
+    nyan? : number;
+}
+
+const opNyan: OptionalNyan = {wan: 'bow-wow'};
+
+function OptionalCheck(obj: OptionalNyan): number {
+    return obj.nyan != null ? obj.nyan * 100 : 50000;
+}
+
+console.log('?を付けて宣言したプロパティは省略可能であり、利用する際には undefined チェックが必要')
+console.log(OptionalCheck(opNyan));
+
+// 関数シグネチャ
+interface Kansuu {
+    (arg: string): void;
+    (arg: number): void;
+}
+
+const tameshiFunc: Kansuu = (arg: string | number)=>{ 
+    if (typeof arg === 'string') {
+        console.log(arg);
+    } else {
+        console.log(arg*100);
+    }
+};
+
+tameshiFunc('aaa');
+
+interface Length {
+    length: number;
+}
+const o: Length = 'foobar';
+console.log(`length は ${o.length}`);
+
+// unknown 型おためし
+const u: unknown = 3;
+
+if (typeof u === 'number') {
+    console.log(`passed variable is number-type and its values is ${u}`)
+}
+
+class MyClass {
+    public prop: number = -20;
+}
+const unk: unknown = new MyClass();
+
+if (unk instanceof MyClass) {
+    console.log(unk.prop);
+}
+
+// unknown と void の関係
+const f: (() => void) = () => 123;
+const voidValue: void = f();
+console.log(`voidValue is ${voidValue}\nType of voidValue is ${typeof voidValue}`);
+
 
 const Practice: NextPage = () => (
     <div>
