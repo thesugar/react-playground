@@ -700,7 +700,7 @@ console.log(obj.foo); // 'after!'
 ```ts
 interface MyObj {
     // この記法！
-    [key:string] : number;
+    [key:string]: number;
 }
 
 const obj: MyObj = {};
@@ -931,3 +931,315 @@ console.log(voidValue); // 123
 なので、`void` 型の値を得てもそれが `undefined` である保証すら無いということになる。`void` 型を持つ値の挙動はやはり `unknown` 型と似ており、基本的に使うことができない（`unknown` 型として使うことはできる）。  
 
 以上より、`void` 型というのは `unknown` にさらに追加の制限が加わった型という見方ができる。
+
+## typeof
+`typeof 変数` と書くと、その変数の型が得られる。
+
+```ts
+let foo = '文字列だよ';
+type FooType = typeof foo; // FooType は string になる（let で宣言してるからリテラル型（'文字列だよ'型）にはならない
+
+const str: FooType = 'abc';
+```
+
+## keyof
+ある `T` を型とすると、`keyof T` という型の構文がある。`keyof T` は、「`T` のプロパティ名全ての型」である。
+
+```ts
+interface MyObj {
+    foo: string;
+    bar: number;
+}
+
+let key: keyof MyObj;
+key = 'foo';
+key = 'bar';
+key = 'nyan' // 🛑 Error: Type '"nyan"' is not assignable to type '"foo" | "bar"'.
+```
+
+なお、JavaScript ではプロパティ名は文字列のほかに *シンボル* である可能性もある。よって、keyof 型はシンボルの型を含む可能性もある。
+
+```ts
+// 新しいシンボルを作成
+const symb = Symbol();
+
+const obj = {
+    foo: 'str',
+    [symb] : 'symb', // [symb] は symb を文字列でなく式として評価してプロパティ名（キー）にするという意味
+};
+
+// ObjType = 'foo' | typeof symb
+type ObjType = keyof (typeof obj);
+```
+
+上記の例では、`obj` のプロパティ名の型を keyof で得た。`ObjType` は `'foo' | typeof symb` となっている。`'foo' | symbol` とはならない点に注意しよう。TypeScript ではシンボルは `symbol` 型だが、プロパティ名としてはシンボルはひとつずつ異なるため `symb` に入っている特定のシンボルでないといけない。  
+
+さらに、keyof 型には `number` の部分型（：数値のリテラル型ってことよね）が含まれる場合もある。それは、数値リテラルを使ってプロパティを宣言した場合である。
+
+```ts
+const obj = {
+    foo: 'str',
+    0: 'num',
+};
+
+// ObjType = 0 | 'foo'
+type ObjType = keyof (typeof obj);
+```
+
+JavaScript ではプロパティ名には数値は使えない（使おうとした場合文字列に変換される）が、TypeScript では数値をプロパティ名に使用した場合は型の上ではそれを保とうとするのである。
+  
+また、上で出てきたインデックスシグネチャを持つオブジェクトの場合はまた挙動が異なる。
+
+```ts
+interface MyObj {
+    [foo: string]: number;
+}
+
+// MyObjKey = string | number
+type MyObjKey = keyof MyObj;
+```
+
+この例で定義した `MyObj` 型は *任意の* `string` 型の名前に対してその名前のプロパティは `number` 型を持つという意味になっている。ということは、`MyObj` 型のオブジェクトのキーとしては `string` 型の値すべてが使用できる。よって、`keyof MyObj` は `string` になることが期待できる。  
+
+しかし、実際にはこれは `string | number` となる。これは、数値の場合もどのみち文字列に変換されるから OK という意図が込められたもの。  
+なお、一方、インデックスシグネチャのキーの型が `number` の場合（上の例で `[foo: number]: ...` とした場合）は `keyof MyObj` は `number` のみとなる。
+
+## Lookup Types `T[K]`
+keyof とセットで使われることが多いのが Lookup Types である。これは、型 `T` と `K` に対して `T[K]` という構文で書く。`K` がプロパティ名（つまりオブジェクトのキー）の型であるとき、 `T[K]` は `T` のそのプロパティの型となる。（？？？）👉なんのことかわからないのでコードを見てみよう。
+
+```ts
+interface MyObj {
+    foo: string;
+    bar: number;
+}
+
+// 上の説明にあてはめると、型 T = MyObj 型、型 K = 'foo'。
+// T[K]（MyObj['foo']）は MyObj の foo プロパティの型になるので、string 型。
+// つまり what は string 型となり、文字列を代入できる。
+const what: MyObj['foo'] = 'にゃんにゃか．'
+```
+
+同様に、上の例において `MyObj['bar']` は `number` になる。 `MyObj['baz']` のように、プロパティ名ではない型を与えるとエラーになる。**`K` は `keyof T` の部分型である必要がある**。 
+
+逆に言えば、`MyObj[keyof MyObj]` という型は可能で、これは `MyObj['foo' | 'bar']` という型を表す。そして、`MyObj['foo']` は `string` 型を表し、`MyObj['bar']` は `number` 型を表すのだから、最終的に `MyObj['foo' | 'bar']` は `string | number` になる。  
+  
+keyof と Lookup Types を使うと以下のような関数を書ける。
+
+```ts
+function pick<T, K extends keyof T>(obj: T, key: K): T[K] {
+    return obj[key];
+}
+
+const obj = {
+    foo: 'string',
+    bar: 123,
+};
+
+const str: string = pick(obj, 'foo');
+const num: number = pick(obj, 'bar');
+```
+
+この関数 pick は、`pick(obj, 'foo')` とすると `obj.foo` を返してくれるような関数。注目すべきは、この関数にちゃんと型を付けることができているという点。  
+
+pick は型変数を 2 つ持ち、2 つ目は `K extends keyof T` と書かれている。これは、「ここで宣言する型変数 `K` は `keyof T` の部分型でなければならない」という意味。
+
+## Mapped Types
+以上の 2 つ（keyof, Lookup Types）と同時に導入されたのが **mapped type** と呼ばれる型。mapped type は `{[P in K]: T}` という構文を持つ型である。ここで `P` は型変数、`K` と `T` はなんらかの型とする。ただし、`K` は `string` の部分型である必要がある。たとえば、 `{[P in 'foo' | 'bar']: number}` という型が可能。  
+
+`{[P in K]: T}` という型の意味は、「`K` 型の値として可能な各文字列 `P` に対して、型 `T` を持つプロパティ `P` が存在するようなオブジェクトの型」である。`{[P in 'foo' | 'bar']: number}` の例では `K` は `'foo' | 'bar'` なので、`P` としては `'foo'` と `'bar'` が可能。よってこの型が表しているのは `number` 型を持つプロパティ foo と bar が存在するようなオブジェクトである。  
+
+すなわち `{[P in 'foo' | 'bar']: number}` というのは `{ foo: number; bar: number;}` と同じ意味である。
+
+```ts
+type Obj1 = {[P in 'foo' | 'bar']: number};
+interface Obj2 {
+    foo: number;
+    bar: number;
+}
+
+const obj1: Obj1 = {foo: 3, bar: 5};
+const obj2: Obj2 = obj1;
+const obj3: Obj1 = obj2;
+```
+
+さて、これだけではなんの意味があるのかわからないが、実は、`{[P in K]: T}` という構文において、型 `T` の中で `P` を使うことができるのである。
+
+```ts
+type PropNullable<T> = {[P in keyof T]: T[P] | null};
+
+interface Foo {
+    foo: string;
+    bar: number;
+}
+
+const obj: PropNullable<Foo> = {
+    foo: 'にゃ',
+    bar: null,
+};
+```
+
+ここでは型変数 `T` を持つ型 `PropNullable<T>` を定義した。この型は、`T` 型のオブジェクトの各プロパティ `P` の型が、 `T[P] | null`、すなわち、元の型であるか null であるかのいずれかであるようなオブジェクトの型。  
+
+また、mapped type では `[P in K]` の部分に `?` や `readonly` といった修飾子をつけることができる。例えば、次の型 `Partial<T>` は `T` のプロパティをすべてオプショナルにした型である。（この型は TypeScript の標準ライブラリに定義されており、自分で定義しなくても使うことができる。）  
+すべてのプロパティを readonly にする `ReadOnly<T>` も用意されている。
+
+```ts
+type Partial<T> = {[P in keyof T]?: T[P]};
+```
+
+逆に、修飾子を取り除くことも可能である。そのためには、`?` や `readonly` の前に `-` をつける。たとえば、すべてのプロパティから `?` を取り除く（`Partial<T>` と逆のはたらきをする）`Required<T>` は次のように書ける（実際にはこの `Required<T>` も標準ライブラリに入っている）。
+
+```ts
+type Required<T> = {[P in keyof T]-?: T[P]};
+
+interface Foo {
+    foo: string;
+    bar?: number;
+}
+
+type ReqFoo = Required<Foo>;
+// ReqFoo = { foo: string; bar:number; }
+// Required によって、もともとの interface 定義ではオプショナルだった bar プロパティも必須プロパティになる
+```
+
+mapped type を使う例としては、他にも以下のようなものもある。
+
+```ts
+function propStringify<T> (obj: T): {[P in keyof T]: string} {
+    const result = {} as {[P in keyof T]: string};
+    for (const key in obj) {
+        result.key = String(obj[key]);
+    }
+    return result;
+}
+```
+
+## Conditional Types
+これは **型レベルの条件分岐が可能な型** 。Conditonal Type は 4 つの型を用いて `T extends U ? X : Y` という構文で表現される。すなわち、この型は `T` が `U` の部分型ならば `X` に、そうでなければ `Y` になる。
+
+### mapped types の限界
+mapped type の問題 -> deep なマッピングができない。たとえば、`Readonly<T>` はプロパティを *shallow に* readonly 化する。例えば
+
+```ts
+interface Obj {
+    foo: string;
+    bar: {
+        hoge: number;
+    };
+}
+```
+
+という型に対して `Readonly<Obj>` としても、`foo` と `bar` は readonly になるが `bar` の中の `hoge` は readonly にならない。ネストしているオブジェクトも含めて全部 readonly にしてくれるようなものを作ろうとした場合、例えば以下のように定義するとうまくいくだろうか。
+
+```ts
+// 素朴に再帰を書く
+type DeepReadonly<T> = {
+    readonly [P in keyof T]: DeepReadonly<T[P]>;
+}
+```
+
+これは以下のようなケースだとうまくいくが・・・
+
+```ts
+interface Obj {
+    foo: string;
+    bar: {
+        hoge: number;
+    };
+}
+
+type ReadOnlyObj = DeepReadonly<Obj>;
+
+const obj: ReadOnlyObj = {
+    foo: 'foo',
+    bar: {
+        hoge: 3,
+    },
+};
+
+obj.bar.hoge = 10; // 🛑 ERROR
+```
+
+しかし、これは `DeepReadonly<T>` の `T` の型が何か判明しているからであり、次のような状況ではうまくいかなくなる。
+
+```ts
+function readonlyify<T>(obj: T): DeepReadonly<T> {
+    // 🛑 Error: Excessive stack depth comparing types 'T' and 'DeepReadonly<T>'
+    return obj as DeepReadonly<T>;
+}
+```
+
+つまり、このような単純な再帰では一般の `T` に対してどこまでも mapped type を展開してしまうことになり
+それを防ぐために conditional type が必要となる。  
+  
+（ちなみに、deep に readonly にするには as const を使えばいけるはず）
+
+### conditional type による `DeepReadonly<T>`
+conditonal type を用いて `DeepReadonly<T>` を定義すると以下のようになる。
+
+```ts
+// T が配列の場合、配列以外のオブジェクトの場合、それ以外（プリミティブ）の場合で条件分岐
+type DeepReadonly<T> =
+    T extends any[] ? DeepReadonlyArray<T[number]> : // 配列の場合は DeepReadonlyArray<T> で処理
+    T extends object ? DeepReadonlyObject<T> : // それ以外のオブジェクトは DeepReadonlyObject<T> で処理
+    T; // プリミティブの場合はそのプロパティを考える必要はないため単に T を返す。
+
+// DeepReadonlyArray<T> は、要素の型である T を DeepReadonly<T> で再帰的に処理
+// 配列自体の型は ReadonlyArray<T> により表現
+// ReadonlyArray<T> は標準ライブラリにある型で、各要素が readonly になっている配列。 
+interface DeepReadonlyArray<T> extends ReadonlyArray<DeepReadonly<T>> {}
+
+type DeepReadonlyObject<T> = {
+    // mapped type を用いて各プロパティを処理
+    // NonFunctionPropertyNames<T> は T のプロパティのうち関数でないもの。
+    // T からメソッド（関数であるようなプロパティ）を除去している。
+    // （メソッドにより自己を書き換える可能性を排除している）
+    readonly [P in NonFunctionPropertyNames<T>]: DeepReadonly<T[P]>;
+};
+
+// これも conditional type で実装されている
+type NonFunctionPropertyNames<T> = { [K in keyof T]: T[K] extends Function ? never : K}[keyof T];
+```
+
+`DeepReadonly<T>` が conditional type になっており、`T` が配列か（配列以外の）オブジェクトかそれ以外（プリミティブ）かで条件分岐している。  
+
+`T[number]` というのは、その条件分岐内では配列であるところの `T` に対して `number` 型のプロパティ名でアクセスできるプロパティの型だから、配列 `T` の要素の型ということになる。  
+
+`DeepReadonlyObject<T>` は mapped type を用いて各プロパティを処理している。ただし、 `NonFunctionPropertyNames<T>` というのは `T` のプロパティ名のうち関数でないもの。これも conditional type で実装されている。  
+
+実のところ、`DeepReadonly<T>` の本質は、conditional type が遅延評価されるところにある。`DeepReadonly<T>` の条件分岐は `T` が何かわからないと判定できないので必然的にそうなるが、これにより、評価時に無限に再帰することを防いでいる。
+
+### conditional type における型マッチング
+conditional type にはさらに協力な機能がある。それは、**conditional typeの条件部で新たな型変数を導入できる** という機能である。
+
+**例**
+```ts
+type ReturnType<T> = T extends ((...args: any[]) => infer R) ? R : T;
+```
+
+`ReturnType<T>` は、`T` が関数の型のとき、その返り値の型となる。ポイントは、関数の型の返り値部分にある `infer R` である。このように `infer` キーワードを用いることで、conditional type の条件部分で型変数を導入することができる。導入された型変数は分岐の then 側（`?` のあと）で利用可能になる。  
+
+つまり、この `ReturnType<T>` は `T` が `(...args: any[]) => R` （の部分型）であるとき `R` に評価されるということ。then 側でしか型変数が使えないのは、else 側では `T` が `(...args: any[]) => R` の形をしていないかもしれないことを考えると当然と言える。このことからわかるように、この機能は **型に対するパターンマッチ** と見ることができる。
+
+同じ型変数に対する `infer` が複数箇所に現れることも可能。その場合、推論される型変数に union 型や intersection 型が入ることもある。
+
+```ts
+type Foo<T> =
+    T extends {
+        foo: infer U;
+        bar: infer U;
+        hoge: (arg: infer V)=> void;
+        piyo: (arg: infer V)=> void;
+    } ? [U, V] : never;
+
+interface Obj {
+    foo: string;
+    bar: number;
+    hoge: (arg: string)=> void;
+    piyo: (arg: number)=> void;
+}
+
+declare let t: Foo<Obj>; // t の型は [string | number, string & number（= never）]
+```
+
+部分型関係を考えれば、`U` が union 型で表現されて `V` が intersection 型で表現される理由がわかる。`U` は covariant な位置に、`V` は contravariant な位置に出現しているからである。

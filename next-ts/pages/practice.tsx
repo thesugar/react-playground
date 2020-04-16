@@ -356,6 +356,70 @@ const f: (() => void) = () => 123;
 const voidValue: void = f();
 console.log(`voidValue is ${voidValue}\nType of voidValue is ${typeof voidValue}`);
 
+// keyof
+const symb = Symbol();
+
+const objWithSymb = {
+    foo: 'ほげーっ',
+    [symb]: 'symb',
+    3: 'うーっ',
+    '2': 'にゃん・にゃーかーに告ぐ',
+}
+
+type ObjType = keyof (typeof objWithSymb);
+
+interface MyObj {
+    [foo: number]: string;
+}
+
+type MyObjKey = keyof MyObj;
+
+function pick<T, K extends keyof T>(obj: T, key: K): T[K] {
+    return obj[key];
+}
+
+const moji: string = pick(objWithSymb, 'foo');
+console.log(`moji is ${moji}`)
+
+// mapped type
+type PropNullable<T> = {[P in keyof T]: T[P] | null};
+
+interface Foo {
+    foo: string;
+    bar: number;
+}
+
+const propNullable: PropNullable<Foo> = {
+    foo: 'にゃ',
+    bar: null,
+}
+
+interface Obj {
+    foo: string;
+    bar: {
+        hoge: number;
+    };
+}
+
+// conditional type における型マッチング
+type ReturnType<T> = T extends (...args: any[]) => infer R ? R : T;
+
+type Conditional<T> =
+    T extends {
+        foo: infer U;
+        bar: infer U;
+        hoge: (arg: infer V)=> void;
+        piyo: (arg: infer V)=> void;
+    } ? [U, V] : never;
+
+interface Obujekuto {
+    foo: string;
+    bar: number;
+    hoge: (arg: string)=> void;
+    piyo: (arg: number)=> void;
+}
+
+declare let t: Conditional<Obujekuto>;
 
 const Practice: NextPage = () => (
     <div>
