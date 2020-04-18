@@ -233,6 +233,176 @@ console.log(dataMap);
 // エラー例
 // mapFromArray(data, "age");
 
+// ========================
+// 2020/4/18
+// ========================
+
+// 2-5 復習
+// Good 👍
+type ArgumentForStateUpdate<T> = T | ((prevState: T) => T);
+declare function useState<T>(initialState: T): [T, (arg: ArgumentForStateUpdate<T>) => void];
+
+// 使用例
+// number型のステートを宣言 (numStateはnumber型)
+const [numState, setNumState] = useState(0);
+// setNumStateは新しい値で呼び出せる
+setNumState(3);
+// setNumStateは古いステートを新しいステートに変換する関数を渡すこともできる
+setNumState(state => state + 10);
+
+// 型引数を明示することも可能
+const [anotherState, setAnotherState] = useState<number | null>(null);
+setAnotherState(100);
+
+// 3-1 復習
+function myMap<T, K extends keyof T>(arr: T[], key: K): Map<T[K], T> {
+    const result = new Map();
+    for (const obj of arr) {
+        result.set(obj[key], obj);
+    }
+    return result;
+}
+
+/*
+💡部分型について
+    K extends keyof T について。
+    これは K が keyof T の部分型でなければいけないということを示しており、
+    keyof T は T が持つプロパティ名いずれかの型である。以下の使用例では T = {id: number; name: string} なので
+    keyof T は "id" | "name" となる。そして、K はその部分型（つまり、"id" | "name" に当てはめることができる型）なので
+    "id" や "name"、"id" | "name" などが可能。（使用例では K には "id" という型が入る）
+*/
+
+const data2 = [
+    { id: 1, name: "John Smith" },
+    { id: 2, name: "Mary Sue" },
+    { id: 100, name: "Taro Yamada" }
+  ];
+const dataMap2 = myMap(data2, "id");
+
+// 3-2
+// OK 👍 Mapped Types の基本的な例。
+// key とかじゃなくて K としたほうがいいんじゃない？（命名）
+type MyPartial<T> = {
+    [key in keyof T]?: T[key];
+}
+
+type T1 = MyPartial<{foo: number; bar: string;}>;
+
+// 3-3　👺復習すること。
+
+// 引数に渡された文字列に応じて型の挙動を変えたい場合はその文字列をリテラル型として取得するのが定番
+// class EventDischarger<T> でジェネリクスを使ったうえで、
+// メソッド（emit）にもジェネリクスを指定することに思い至れれば解ける。
+
+interface EventPayloads {
+    start : {
+        user: string;
+    };
+    stop : {
+        user : string;
+        after: number;
+    };
+    end: {};
+}
+
+class EventDischarger<E> {
+    emit<Ev extends keyof E>(eventName: Ev, payload: E[Ev]) {
+        // 省略
+    }
+}
+// 使用例
+const ed = new EventDischarger<EventPayloads>();
+ed.emit("start", {
+  user: "user1",
+});
+ed.emit("stop", {
+  user: "user1",
+  after: 3
+});
+ed.emit("end", {});
+
+// エラー例
+/*
+ed.emit("start", {
+  user: "user2",
+  after: 0
+});
+ed.emit("stop", {
+  user: "user2"
+});
+ed.emit("foobar", {
+  foo: 123
+});
+*/
+
+// 3-4
+// Good 👍 代数的データ型を模したパターン！
+// 模範解答では type Action = | { ... } ... と、
+// 最初にも | が付いているけど違いはあるのか？
+
+type Action = {
+    type: "increment"
+    amount: number
+} | {
+    type: "decrement"
+    amount: number
+} | {
+    type : "reset"
+    value: number
+}
+
+const reducer = (state: number, action: Action) => {
+    switch (action.type) {
+        case "increment":
+            return state + action.amount;
+        case "decrement":
+            return state - action.amount;
+        case "reset":
+            return action.value;
+    }
+}
+
+// 使用例
+reducer(100, {
+    type: 'increment',
+    amount: 10,
+}) === 110;
+reducer(100, {
+    type: 'decrement',
+    amount: 55,
+}) === 45;
+reducer(500, {
+    type: 'reset',
+    value: 0,
+}) === 0;
+
+// エラー例
+// reducer(0,{
+//     type: 'increment',
+//     value: 100,
+// });
+
+// 3-5
+// 👺要復習！！！！！！！💢💢💢
+// undefined extends A ? で条件分岐してオプショナルか否か処理を分けるのかなり単純だが
+// 思いつかないと悩む。。あと A extends undefined ではなく *undefined extends A* であることに注意
+// undefined extends A が成り立つというのは A が undefined や undefined | hoge ということ。
+type Func<A, R> = undefined extends A ? (arg?: A) => R : (arg: A) => R;
+
+// 使用例
+const f1: Func<number, number> = num => num + 10;
+const v1: number = f1(10);
+
+const f2: Func<undefined, number> = () => 0;
+const v2: number = f2();
+const v3: number = f2(undefined);
+
+const f3: Func<number | undefined, number> = num => (num || 0) + 10;
+const v4: number = f3(123);
+const v5: number = f3();
+
+// エラー例
+// const v6: number = f1();
 
 const Practice: NextPage = () => (
     <>hello</>
