@@ -241,10 +241,10 @@ Next.js は自動的にコード分割を行うので、各ページはそのペ
 
 リクエストしたページのコードだけを読み込むということは、ページが分離されるということでもあります。あるページでエラーが発生したとしても、アプリの他の部分は動作し続けます。
 
-さらに、（開発時のビルドでなく）プロダクションとしてのビルドにおいては、`Link` コンポーネントがブラウザのビューポートに表示されると、Next.js は自動的にリンク先のページのコードをバックグラウンドで**プリフェッチ**します。リンクをクリックするときまでには、目的のページのコードはバックグラウンドで読み込まれ終わっており、ページ遷移はほぼ瞬時に行われるのです！
+さらに、（開発時のビルドでなく）本番環境でのビルドにおいては、`Link` コンポーネントがブラウザのビューポートに表示されると、Next.js は自動的にリンク先のページのコードをバックグラウンドで**プリフェッチ**します。リンクをクリックするときまでには、目的のページのコードはバックグラウンドで読み込まれ終わっており、ページ遷移はほぼ瞬時に行われるのです！
 
 ### サマリー
-Next.js は、コード分割、クライアントサイドのナビゲーション、（プロダクション環境における）プリフェッチングによって、最良のパフォーマンスのためにアプリを自動的に最適化します。  
+Next.js は、コード分割、クライアントサイドのナビゲーション、（本番環境における）プリフェッチングによって、最良のパフォーマンスのためにアプリを自動的に最適化します。  
 
 `pages` ディレクトリ配下のファイルがルーティングになり、ビルトインの `Link` コンポーネントを利用することができます。ルーティング用のライブラリは必要ありません。
 
@@ -763,3 +763,1126 @@ npm install sass
 
 #### このレッスンはこれで以上です！
 Next.js に組み込まれている CSS サポートや CSS モジュールについてもっと知りたい方は、[我々のドキュメンテーション](https://nextjs.org/docs/basic-features/built-in-css-support) をチェックしてください。
+
+------
+## プリレンダリングとデータフェッチング
+我々はブログを作りたい（[作りたいものはこれ](https://next-learn-starter.now.sh/)です）のですが、ここまででブログの中身は何も追加していません。このレッスンでは、外部にあるブログデータを自分のアプリに取り込む方法を学びます。  
+このレッスンではブログのコンテンツをファイルシステムに保存していきますが、コンテンツが他の場所（データベースやヘッドレス CMS など）に存在する場合も問題なく動作します。
+
+### このレッスンで学ぶこと
+- Next.js のプリフェッチングに関する特徴
+- プリフェッチングの 2 つの形式：静的生成（Static Generation）とサーバサイドレンダリング
+- データがある場合とない場合の静的生成
+- `getStaticProps` と、外部のブログデータをインデックスページにインポートするためのそれ（`getStaticProps`）の使い方
+- `getStaticProps` に関する便利情報
+
+### セットアップ
+#### スターターコードをダウンロードする（任意）
+前のレッスンから継続して取り組んでいる場合は、以下はスキップできます。  
+そうでないのであれば、スターターコードをダウンロードおよびインストールし、以下のとおり実行してください。繰り返しになりますが、前回のレッスンを終えているのであれば以下は不要です。
+```bash
+# If you prefer Yarn, you can use `yarn create` instead of `npm init`
+npm init next-app nextjs-blog --example "https://github.com/zeit/next-learn-starter/tree/master/data-fetching-starter"
+cd nextjs-blog
+# If you prefer Yarn, you can use `yarn dev` instead
+npm run dev
+```
+
+スターターコードをダウンロードしたら、以下を更新してください：
+- `public/images/profile.jpg` をあなたの写真にしてください（推奨：400px × 400px）
+- `components/layout.js` 内の `const name = '[Your Name]'` をあなたの名前にしてください。
+- `pages/index.js` 内の `<p>[Your Self Introduction]</p>` をあなたの自己紹介文にしてください。
+
+### プリレンダリング
+データフェッチングについて説明する前に、Next.js の最も重要な概念のひとつである **プリレンダリング** について説明します。
+
+デフォルトで、Next.js はすべてのページをプリレンダリングします。つまり、Next.js は、クライアント側の JavaScript ですべてのレンダリングを行うのではなく、あらかじめ各ページの HTML を生成しておくということです。プリレンダリングの結果、パフォーマンスと SEO が向上します。
+
+生成された各 HTML はそのページに必要な最小限の JavaScript コードと関連づけられます。ブラウザによってページが読み込まれると、そのページの JavaScript コードが実行され、ページが完全にインタラクティブなものになります（このプロセスは **ハイドレーション** と呼ばれます）。
+
+### プリレンダリングが行われていることを確認する
+以下のステップによって、プリレンダリングが行われていることを確認できます。
+- ブラウザの JavaScript を無効にしてください（[Chromeを使っている場合はこちらから](https://developers.google.com/web/tools/chrome-devtools/javascript/disable)）
+- 本番環境で Next.js アプリにアクセスしてみてください（もしくは [このページ](https://next-learn-assets-metadata-css.now.sh/) にアクセスして確認することもできます）
+
+アプリが JavaScript 無しでレンダリングされていることがわかるはずです。これは Next.js が静的な HTML としてアプリをプリレンダリングしているからで、これによって JavaScript を実行せずともアプリの UI を見ることができるのです。
+
+> メモ：上記のステップは `localhost` でも試すことができますが、JavaScript を無効化していると CSS は読み込まれません。
+
+プレーンな React で（つまり Next.js は使わずに）アプリを作った場合、プリレンダリングは行われません。したがって、JavaScript を無効にするとアプリは表示されなくなってしまいます。たとえば：
+- ブラウザで JavaScript を有効にした状態で[このページを確認してください](https://create-react-app.now-examples.now.sh/)。これは [Create React App](https://create-react-app.dev/) で作成したプレーンな React アプリです。
+- いま、JavaScript を無効にして[同じページ](https://create-react-app.now-examples.now.sh/)に再度アクセスしてください。
+- アプリは表示されなくなっているはずです。代わりに、「You need to enable JavaScript to run this app.」と表示されています。これはアプリが静的な HTML にプリレンダリングされていないためです。
+
+### サマリー：プリレンダリングあり vs プリレンダリングなし
+簡単にまとめてみると以下のようになります。
+
+**画像**
+
+**画像**
+
+次は、Next.js におけるプリレンダリングの 2 つの形式についてお話します。
+
+### プリレンダリングにおける 2 つの形式
+Next.js のプリレンダリングには 2 つの形式があります：**静的生成（Static Generation）** と **サーバサイドレンダリング（SSR）** です。それらの違いは、いつ HTML を生成するかというところにあります。
+
+- **静的生成** は **ビルド時** に HTML を生成するプリレンダリング手法です。プリレンダリングされた HTML は各リクエストに対して *再利用* されます。
+- **サーバサイドレンダリング** は **毎回のリクエストごとに**  HTML を生成するプリレンダリング手法です。
+
+**画像**
+
+**画像**
+
+> 開発モード（`npm run dev` あるいは `yarn dev` を実行したとき）では、静的生成を使用しているページであっても、すべてのページが毎回のリクエストごとにプリレンダリングされます。
+
+### ページ単位
+重要なことは、Next.js ではページごとにどちらのプリレンダリング形式を使用するか **選択** できるということです。ほとんどのページにおいて静的生成（Static Generation）を使用しつつ、残る一部のページはサーバサイドレンダリングを使用するというような「ハイブリッド」な Next.js アプリを作ることができるのです。
+
+**画像**
+
+### いつ静的生成（Static Generation）を使い、いつサーバサイドレンダリングを使用すべきか
+可能ならばいつでも静的生成（データの有無を問わず）を使用することを推奨します。そうすることで、ページは一度ビルドされたら CDN によって提供されるので、毎回のリクエストに対してサーバサイドレンダリングを行うよりもはるかに高速になるからです。
+
+静的生成はいろんなタイプのページで使用できます。一例を示すと：
+- マーケティングページ
+- ブログ記事
+- E コマースの商品リスト
+- ヘルプやドキュメンテーション
+
+自分自身に尋ねてみましょう、「このページをユーザーのリクエストに **先立って** プリレンダリングすることはできるだろうか？」。答えが yes であれば、静的生成を選択すべきです。
+
+一方、ユーザーのリクエストに先立ってページをプリレンダリングすることができないのであれば、静的生成は良い考えでは **ありません**。頻繁に更新されるデータを表示するページや、毎回のリクエストごとに内容が変わるページなどです。
+
+そういったケースでは、**サーバサイドレンダリング** を使用することができます。静的生成に比べて遅くなってはしまいますが、プリレンダリングされたページはつねに最新状態が保たれます。あるいはプリレンダリングは行わずに、クライアント側の JavaScript を使用してデータを埋め込むこともできます。
+
+### 静的生成にフォーカスを当てる
+このレッスンでは、静的生成にフォーカスを当てます。次は、データが **ある場合と無い場合** の静的生成についてお話します。
+
+### データがある場合とない場合の静的生成
+静的生成は **データ** がある場合も無い場合も行うことができます。
+
+ここまでで我々が作ってきたページでは外部データの取得（フェッチ）は必要ありませんでした。こういったページは、本番用にアプリがビルドされるときに自動的に静的生成されます。
+
+**画像**
+
+しかし、ページによっては、最初に外部データを取得しないと HTML をレンダリングできない場合があります。ファイルシステムにアクセスしたり、外部 API を取得したり、ビルド時にデータベースに問い合わせたりする必要があるかもしれません。Next.js ではこうしたケース、すなわち **データ有り** の静的生成も、追加設定なしで対応できます。
+
+**画像**
+
+### `getStaticProps` を使った、データ有りの静的生成
+データ有りの静的生成はどのように動作するのでしょうか？Next.js では、ページコンポーネントを export するとき、`getStaticProps` という `async` 関数も export することができます。そうした場合、
+- `getStaticProps` は本番環境用のビルド時に実こおうされます
+- 関数内部では、外部データを取得（フェッチ）して、取得したデータを props としてページに渡すことができます。
+
+```js
+export default function Home(props) { ... }
+
+export async function getStaticProps() {
+    // ファイルシステムや API、DB などから外部データを取得する
+    const data = ...
+
+    // `props` キーに対応する値が `Home` コンポーネントに渡される
+    return {
+        props: ...
+    }
+}
+```
+
+本質的には、`getStaticProps` を使うことで Next.js にこう伝えることができるということです。「このページにはいくつか外部に依存しているデータがあるよ。だからビルド時にこのページをプリレンダリングするときは、まずその依存関係をしっかり解決してよ！」
+
+> メモ：開発環境では、`getStaticProps` は毎回のリクエストごとに実行されます。
+
+### `getStaticProps` を使いましょう
+習うより慣れろです。次からは `getStaticProps` を使ってブログに実装を加えていきましょう！
+
+### ブログのデータ
+では、ファイルシステムを使って、アプリにブログのデータを追加しましょう。各ブログの投稿はマークダウンファイルにします。
+- 新たに `posts` という名前のディレクトリをトップレベルに作成してください（`pages/posts` とは異なります）。
+- そのディレクトリの中に `pre-rendering.md` と `ssg-ssr.md` という 2 つのファイルを作成してください。
+
+以下を `pre-rendering.md` にコピーしてください。
+
+```markdown
+---
+title: 'Two Forms of Pre-rendering'
+date: '2020-01-01'
+---
+
+Next.js has two forms of pre-rendering: **Static Generation** and **Server-side Rendering**. The difference is in **when** it generates the HTML for a page.
+
+- **Static Generation** is the pre-rendering method that generates the HTML at **build time**. The pre-rendered HTML is then _reused_ on each request.
+- **Server-side Rendering** is the pre-rendering method that generates the HTML on **each request**.
+
+Importantly, Next.js lets you **choose** which pre-rendering form to use for each page. You can create a "hybrid" Next.js app by using Static Generation for most pages and using Server-side Rendering for others.
+```
+
+以下を `ssg-ssr.md` にコピーしてください。
+
+```markdown
+---
+title: 'When to Use Static Generation v.s. Server-side Rendering'
+date: '2020-01-02'
+---
+
+We recommend using **Static Generation** (with and without data) whenever possible because your page can be built once and served by CDN, which makes it much faster than having a server render the page on every request.
+
+You can use Static Generation for many types of pages, including:
+
+- Marketing pages
+- Blog posts
+- E-commerce product listings
+- Help and documentation
+
+You should ask yourself: "Can I pre-render this page **ahead** of a user's request?" If the answer is yes, then you should choose Static Generation.
+
+On the other hand, Static Generation is **not** a good idea if you cannot pre-render a page ahead of a user's request. Maybe your page shows frequently updated data, and the page content changes on every request.
+
+In that case, you can use **Server-Side Rendering**. It will be slower, but the pre-rendered page will always be up-to-date. Or you can skip pre-rendering and use client-side JavaScript to populate data.
+```
+
+> `title` と `date` を含むメタデータ部分が各マークダウンの一番上にあることに気づいたかもしれません。これは YAML Front Matter と呼ばれているもので、 [gray-matter](https://github.com/jonschlinkert/gray-matter) というライブラリを使って解析できます。
+
+### `getStaticProps` でブログデータを解析する
+では、このデータを使ってインデックスページ（`pages/index.js`）を更新しましょう。やろうとしていることは
+- 各マークダウンファイルを解析して `title`、`date` およびファイル名（その投稿の URL に対応する `id` としてファイル名を使います）を取得します
+- インデックスページのデータをリスト化し、日付によってソートします。
+
+**画像**
+
+### getStaticProps を実装する
+最初に、各マークダウンファイルのメタデータを解析するために [gray-matter](https://github.com/jonschlinkert/gray-matter) をインストールします。
+
+```bash
+npm install gray-matter
+```
+
+次に、ファイルシステムからデータを取得するための簡単なライブラリを作ります。
+- `lib` というディレクトリをトップレベルに作成してください
+- そのディレクトリの中に `posts.js` というファイルを以下の内容で作成してください。
+
+```js
+import fs from 'fs'
+import path from 'path'
+import matter from 'gray-matter'
+
+const postsDirectory = path.join(process.cwd(), 'posts')
+
+export function getSortedPostsData() {
+  // Get file names under /posts
+  const fileNames = fs.readdirSync(postsDirectory)
+  const allPostsData = fileNames.map(fileName => {
+    // Remove ".md" from file name to get id
+    const id = fileName.replace(/\.md$/, '')
+
+    // Read markdown file as string
+    const fullPath = path.join(postsDirectory, fileName)
+    const fileContents = fs.readFileSync(fullPath, 'utf8')
+
+    // Use gray-matter to parse the post metadata section
+    const matterResult = matter(fileContents)
+
+    // Combine the data with the id
+    return {
+      id,
+      ...matterResult.data
+    }
+  })
+  // Sort posts by date
+  return allPostsData.sort((a, b) => {
+    if (a.date < b.date) {
+      return 1
+    } else {
+      return -1
+    }
+  })
+}
+```
+
+そうしたら、 `pages/index.js` 内で、この関数をインポートしてください。
+
+```js
+import { getSortedPostsData } from '../lib/posts'
+```
+
+続いてこの関数を `getStaticProps` 内で呼びます。関数を呼び出した結果は props キーの内部で返す必要があります。
+
+```js
+export async function getStaticProps() {
+  const allPostsData = getSortedPostsData()
+  return {
+    props: {
+      allPostsData
+    }
+  }
+}
+```
+
+このように設定すれば、`allPostsData` prop は `Home` コンポーネントに渡されます。この渡された prop を見るために、コンポーネントの定義を `{ allPostsData }` を受け取るように修正しましょう。
+
+```js
+export default function Home ({ allPostsData }) { ... }
+```
+
+データを表示するために、別の `<section>` タグをコンポーネントの下部に追加します。
+
+```js
+export default function Home({ allPostsData }) {
+  return (
+    <Layout home>
+      <Head>…</Head>
+      <section className={utilStyles.headingMd}>…</section>
+      <section className={`${utilStyles.headingMd} ${utilStyles.padding1px}`}>
+        <h2 className={utilStyles.headingLg}>Blog</h2>
+        <ul className={utilStyles.list}>
+          {allPostsData.map(({ id, date, title }) => (
+            <li className={utilStyles.listItem} key={id}>
+              {title}
+              <br />
+              {id}
+              <br />
+              {date}
+            </li>
+          ))}
+        </ul>
+      </section>
+    </Layout>
+  )
+}
+```
+
+いま、http://localhost:3000 にアクセスすればブログのデータが見えるはずです。
+
+**画像**
+
+おめでとうございます！外部のデータを（ファイルシステムから）取得して、そのデータを使ってインデックスページをプリレンダリングすることが無事成功しました！
+
+**画像**
+
+`getStaticProps` を使うにあたっての Tips をいくつか紹介します。
+
+### getStaticProps の詳細
+`getStaticProps` に関するより詳しい情報は [ドキュメンテーション](https://nextjs.org/docs/basic-features/data-fetching) から確認できますが、ここでは `getStaticProps` について知っておくべきいくつかの本質的な情報を紹介します。
+
+### 外部 API を取得する あるいは データベースに問い合わせる
+我々が作ったアプリの `lib/posts.js` では、`getSortedPostsData` を実装してファイルシステムからデータを取得しました。しかし、外部の API エンドポイントといった他のデータソースからもデータを取得することができますし、そのようにしても問題なく動作します。
+
+```js
+import fetch from 'node-fetch'
+
+export async function getSortedPostsData() {
+  // Instead of the file system,
+  // fetch post data from an external API endpoint
+  const posts = await fetch('..')
+  return res.json()
+}
+```
+
+直接データベースにクエリを発行することもできます。
+
+```js
+import someDatabaseSDK from 'someDatabaseSDK'
+
+const databaseClient = someDatabaseSDK.createClient(...)
+
+export async function getSortedPostsData() {
+  // Instead of the file system,
+  // fetch post data from a database
+  return databaseClient.query('SELECT posts...')
+}
+```
+
+これは、`getStaticProps` は **サーバサイドでのみ** 実行されるから可能なことです。`getStaticProps` がクライアントサイドで実行されることは決してありません。ブラウザ用の JS バンドルに含まれることもありません。つまり、直接データベースにクエリを投げるようなコードを書くことができて、ブラウザにそのコードが送られることは無いということです。
+
+### 開発環境 vs 本番環境
+- 開発環境（`npm run dev` あるいは `yarn dev`）では、`getStaticProps` は毎回のリクエストごとに実行されます。
+- 本番環境では、`getStaticProps` はビルド時にのみ実行されます。
+
+ビルド時にのみ実行されるよう想定されているため、クエリパラメータや HTTP ヘッダなど、リクエスト時にしか利用できないデータを使用することはできません。
+
+### ページでのみ利用できる
+`getStaticProps` は **ページ** からのみ export できます。ページではないファイルから export することはできません。
+
+この制約の理由のひとつは、React では、ページがレンダリングされる前に、必要なデータがすべて揃っている必要があるからです。
+
+### リクエスト時にデータを取得する必要がある場合はどうする？
+ユーザーのリクエストに先立ってページをプリレンダリングすることができない場合には静的生成はいいアイデアでは **ありません**。頻繁に更新されるデータを表示したり、ページの内容が毎回のリクエストで変化するようなページの場合です。
+
+こういったケースでは、**サーバサイドレンダリング** を試すか、プリレンダリングをスキップしてしまうこともできます。次のレッスンに進む前に、こういった戦略について説明します。
+
+### リクエスト時にデータを取得する
+ビルド時ではなく **リクエスト時** にデータを取得する必要がある場合、**サーバサイドレンダリング** を試してみることができます。
+
+**画像**
+
+サーバサイドレンダリングを使うには、`getStaticProps` ではなく`getServerSideProps` をページから export する必要があります。
+
+### `getServerSideProps` を使う
+こちらが `getServerSideProps` のスターターコードです。我々のブログアプリの例では必要ありませんので実装は行いません。
+
+```js
+export async function getServerSideProps(context) {
+  return {
+    props: {
+      // props for your component
+    }
+  }
+}
+```
+
+`getServerSideProps` はリクエスト時に呼ばれるので、そのパラメータ（`context`）にはリクエストの特定のパラメータが含まれます。これは [ドキュメンテーション](https://nextjs.org/docs/basic-features/data-fetching#getserversideprops-server-side-rendering) でもっと知ることができます。
+
+`getServerSidePRops` は、リクエスト時にデータを取得しなければならないページをプリレンダリングする必要がある場合にのみ使うべきです。毎回のリクエストに対してサーバはレンダリング処理を行わなくてはならず、また、その処理の結果は追加の設定をしないかぎり CDN にキャッシュしておくこともできないので、Time To First Byte（TTFB、最初の 1 バイトが到着するまでの時間）は `getStaticProps` よりも遅くなってしまいます。
+
+### クライアントサイドレンダリング
+データをプリレンダリングする必要が **ない** 場合には、以下の戦略（**クライアントサイドレンダリング** と呼ばれる）を使うこともできます。
+- 外部データを必要としないページの部分を静的生成（プリレンダリング）する
+- ページが読み込まれたら、クライアント側で JavaScript を使って外部データを取得し、残る部分にデータを埋め込む
+
+**画像**
+
+このアプローチは、たとえば、ユーザーのダッシュボードページを作るときなどにうまくいきます。ダッシュボードはプライベートなもので、ユーザーに固有のページであり、SEO は関係なく、ページがプリレンダリングされる必要もないからです。データは頻繁に更新され、リクエスト時のデータ取得を必要とします。
+
+### SWR
+Next.js を開発しているチームは、SWR というデータフェッチ用の React フックを作成しました。クライアント側でデータを取得する場合にはこちらを強くおすすめします。キャッシング、再検証（revalidation）、フォーカストラッキング、インターバルを開けた再フェッチなどに対応しています。ここでは詳細までは触れませんが、使用例を紹介します。
+
+```js
+import useSWR from 'swr'
+
+function Profile() {
+  const { data, error } = useSWR('/api/user', fetch)
+
+  if (error) return <div>failed to load</div>
+  if (!data) return <div>loading...</div>
+  return <div>hello {data.name}!</div>
+}
+```
+
+[詳細は SWR のドキュメントをチェックしてください](https://swr.now.sh/)。
+
+**完了です！**
+次のレッスンでは、各ブログの投稿に対して **動的ルーティング** を使用してページを作成します。
+
+> 繰り返しになりますが、`getStaticProps` と `getServerSideProps` についてより深く知りたい場合は [ドキュメンテーション](https://nextjs.org/docs/basic-features/data-fetching) をご確認ください。
+
+----
+## 動的ルーティング
+ブログのデータをインデックスページに埋め込みましたが、個々のブログ記事のページはまだ作成していません（[作りたいものはこちら](https://next-learn-starter.now.sh/)です）。こうした個々の記事のページの URL はブログのデータに依存するものにしたいところです。つまり、動的ルーティングを使用する必要があるということです。
+
+### このレッスンで学ぶこと
+- `getStaticPaths` を使って動的ルーティングによりページを静的に生成する方法
+- ブログの各投稿のデータを取得するための `getStaticProps` の書き方
+- `remark` を用いたマークダウンのレンダー方法
+- 日付を表す文字列をきれいに出力する方法
+- 動的ルーティングを用いてページにリンクを貼る方法
+- 動的ルーティングに関するいくつかの便利な情報
+
+### セットアップ
+#### スターターコードをダウンロードする（任意）
+前のレッスンから継続して取り組んでいる場合は、以下はスキップできます。  
+そうでないのであれば、スターターコードをダウンロードおよびインストールし、以下のとおり実行してください。繰り返しになりますが、前回のレッスンを終えているのであれば以下は不要です。
+
+```bash
+# If you prefer Yarn, you can use `yarn create` instead of `npm init`
+npm init next-app nextjs-blog --example "https://github.com/zeit/next-learn-starter/tree/master/dynamic-routes-starter"
+cd nextjs-blog
+# If you prefer Yarn, you can use `yarn dev` instead
+npm run dev
+```
+
+スターターコードをダウンロードしたら、以下を更新してください：
+- `public/images/profile.jpg` をあなたの写真にしてください（推奨：400px × 400px）
+- `components/layout.js` 内の `const name = '[Your Name]'` をあなたの名前にしてください。
+- `pages/index.js` 内の `<p>[Your Self Introduction]</p>` をあなたの自己紹介文にしてください。
+
+### 外部データに依存するページのパス
+前のレッスンでは、**ページの内容** が外部データに依存するケースを扱いました。`getStaticProps` を使って、インデックスページをレンダーするのに必要なデータを取得したのでした。
+
+今回のレッスンでは、各 **ページのパス** が外部データに依存するケースについて説明します。Next.js を使うことで、外部データに依存するパスを持ったページを静的に生成することができます。このことによって、Next.js では **動的な URL** を使うことが可能になるのです。
+
+**画像**
+
+### 動的ルーティングを使って静的にページを生成する方法
+我々のケースでは、ブログの各投稿に対して動的にページを生成したいです。
+- 各投稿を `/posts/<id>` というパスにしたいですし、ここで `<id>` は、トップレベルに作成した `posts` ディレクトリにあるマークダウンファイルの名前を使いたいです。
+- 我々は `ssg-ssr.md` と `pre-rendering.md` が手元にあるので、それらは `/posts/ssg-ssr` と `/posts/pre-rendering` というパスにしたいです。
+
+### ステップの概要
+以上のことは、以下のステップを踏むことで可能です。**まだこれらの変更を加える必要はありません**、次のページ（節）から行っていきます。
+
+まず、`pages/posts` の下に `[id].js` というページを作成します。`[` で始まり `]` で終わるページは、Next.js では動的なページになります。
+
+`pages/posts/[id].js` では、ブログの投稿記事をレンダーするコードを書きます。我々が作った他のページと同様です。
+
+```js
+import Layout from '../../components/layout'
+
+export default function Post() {
+  return <Layout>...</Layout>
+}
+```
+
+ここで、新たに次のことを行います。それは、このページから `getStaticPaths` という async 関数を export するということです。この関数の中では、`id` として **とりうる値** のリストを返さなければなりません。
+
+```js
+import Layout from '../../components/layout'
+
+export default function Post() {
+  return <Layout>...</Layout>
+}
+
+export async function getStaticPaths() {
+  // Return a list of possible value for id
+}
+```
+
+最後に、ここでまた `getStaticProps` を実装します。今回は、受け取った `id` に基づいて必要なデータを取得します。`getStaticProps` は `params` を受け取りますが、そこには `id` が含まれています。
+
+```js
+import Layout from '../../components/layout'
+
+export default function Post() {
+  return <Layout>...</Layout>
+}
+
+export async function getStaticPaths() {
+  // Return a list of possible value for id
+}
+
+export async function getStaticProps({ params }) {
+  // Fetch necessary data for the blog post using params.id
+}
+```
+
+以上で説明したことを視覚的にまとめると以下のようになります。
+
+**画像**
+
+### getStaticPaths を実装する
+最初に、以下のファイルをセットアップしましょう。
+- `[id].js` というファイルを `pages/posts` ディレクトリの中に作成してください
+- また、`pages/posts` ディレクトリ内の `first-post.js` を削除してください、こちらのファイルはもう使いません。
+
+そうしたら、以下を `pages/posts/[id].js` に書き加えてください。`...` の部分はあとで埋めます。
+
+```js
+import Layout from '../../components/layout'
+
+export default function Post() {
+  return <Layout>...</Layout>
+}
+```
+
+そうしたら、`lib/posts.js` を開いて、以下の関数を追加してください。この関数は、`posts` ディレクトリに存在するファイル名（`.md` ファイルを覗く）のリストを返します。
+
+```js
+export function getAllPostIds() {
+  const fileNames = fs.readdirSync(postsDirectory)
+
+  // Returns an array that looks like this:
+  // [
+  //   {
+  //     params: {
+  //       id: 'ssg-ssr'
+  //     }
+  //   },
+  //   {
+  //     params: {
+  //       id: 'pre-rendering'
+  //     }
+  //   }
+  // ]
+  return fileNames.map(fileName => {
+    return {
+      params: {
+        id: fileName.replace(/\.md$/, '')
+      }
+    }
+  })
+}
+```
+
+**重要**： return されるリストはただの文字列の配列では *ありません*。上記でコメントアウトされているようなオブジェクトの配列でなければなりません。各オブジェクトには `params` キーが存在して、`id` キーを持ったオブジェクトを含んでいなくてはなりません（ファイル名で `[id]` を使用するため）。そうしなければ、`getStaticPaths` は失敗します。
+
+最後に、`pages/posts/[id].js`の中で、この関数をインポートします。
+
+```js
+import { getAllPostIds } from '../../lib/posts'
+```
+
+そうしたら、この関数を呼び出す `getStaticPaths` を作成します。
+
+```js
+export async function getStaticPaths() {
+  const paths = getAllPostIds()
+  return {
+    paths,
+    fallback: false
+  }
+}
+```
+
+- `id` としてとりうる値の配列は、return されたオブジェクトの `paths` キーに対応する値でなければなりません。これはまさに `getAllPostIds()` が返すものです。
+- `fallback: false` は今のところは無視してください。後ほど説明します。
+
+これでほとんど完了ですが、`getStaticProps` を実装する必要があります。
+
+### getStaticProps を実装する
+与えられた `id` を持つ投稿をレンダーするのに必要なデータをフェッチする必要があります。
+
+そうするために、`lib/posts.js` を再度開き、以下の関数を追記してください。これは `id` に基づいてブログの投稿データを返します。
+
+```js
+export function getPostData(id) {
+  const fullPath = path.join(postsDirectory, `${id}.md`)
+  const fileContents = fs.readFileSync(fullPath, 'utf8')
+
+  // Use gray-matter to parse the post metadata section
+  const matterResult = matter(fileContents)
+
+  // Combine the data with the id
+  return {
+    id,
+    ...matterResult.data
+  }
+}
+```
+
+最後に、`pages/posts/[id].js` の中で、以下の行を…
+
+```js
+import { getAllPostIds } from '../../lib/posts'
+```
+
+次のように置き換えてください：
+
+```js
+import { getAllPostIds, getPostData } from '../../lib/posts'
+```
+
+そうしたら、この関数を呼び出す `getStaticProps` を作成してください。
+
+```js
+export async function getStaticProps({ params }) {
+  const postData = getPostData(params.id)
+  return {
+    props: {
+      postData
+    }
+  }
+}
+```
+
+その後、`Post` コンポーネントを、`postData` を使うように更新してください。
+
+```js
+export default function Post({ postData }) {
+  return (
+    <Layout>
+      {postData.title}
+      <br />
+      {postData.id}
+      <br />
+      {postData.date}
+    </Layout>
+  )
+}
+```
+
+これで出来上がりです！試しに次のページにアクセスしてみてください。
+- http://localhost:3000/posts/ssg-ssr
+- http://localhost:3000/posts/pre-rendering
+
+各ページのブログ記事のデータを見ることができるはずです。
+
+**画像**
+
+素晴らしいですね！動的なページを生成することに成功しました。
+
+### うまくいかない場合
+エラーに出くわした場合は、正しいコードを書いたファイルになっているか確認してください。
+- `pages/posts/[id].js` は[このようなコード](https://github.com/zeit/next-learn-starter/blob/master/dynamic-routes-step-1/pages/posts/%5Bid%5D.js)になります。
+- `lib/posts.js` は[このようなコード](https://github.com/zeit/next-learn-starter/blob/master/dynamic-routes-step-1/lib/posts.js)になります。
+- （それでもうまく動かない場合は）残りのコードは[このようなコード](https://github.com/zeit/next-learn-starter/tree/master/dynamic-routes-step-1)になります。
+
+それでもまだ詰まっている場合は、[GitHub Discussions](https://github.com/zeit/next.js/discussions) からコミュニティにお気軽に質問してください。他の人がコードを見ることができるように、GitHub にあなたのコードを push してそれにリンクを貼っていただけるとありがたいです。
+
+### サマリー
+ここでまた、我々が行ったことを視覚的にまとめておきます。
+
+**画像**
+
+しかしまだブログの **マークダウンのコンテンツ** を表示していません。次にその部分に取り組みましょう。
+
+### マークダウンをレンダーする
+マークダウンのコンテンツをレンダーするために、`remark` ライブラリを使用します。まずはインストールしましょう。
+
+```bash
+npm install remark remark-html
+```
+
+それらを `lib/posts.js` でインポートします。
+
+```js
+import remark from 'remark'
+import html from 'remark-html'
+```
+
+そして、`getPostData()` を `remark` を使用するように、以下のとおり書き換えてください。
+
+```js
+export async function getPostData(id) {
+  const fullPath = path.join(postsDirectory, `${id}.md`)
+  const fileContents = fs.readFileSync(fullPath, 'utf8')
+
+  // Use gray-matter to parse the post metadata section
+  const matterResult = matter(fileContents)
+
+  // Use remark to convert markdown into HTML string
+  const processedContent = await remark()
+    .use(html)
+    .process(matterResult.content)
+  const contentHtml = processedContent.toString()
+
+  // Combine the data with the id and contentHtml
+  return {
+    id,
+    contentHtml,
+    ...matterResult.data
+  }
+}
+```
+
+**重要**：　**`async`** キーワードを `getPostData` に追加しましたが、これは、`remark` に対して `async` を使用する必要があるためです。
+
+これは、`pages/posts/[id].js` 内の `getStaticProps` を、`getPostData` を呼び出すときに `await` を使用するように書き換える必要があるということです。
+
+```js
+export async function getStaticProps({ params }) {
+  // Add the "await" keyword like this:
+  const postData = await getPostData(params.id)
+  // ...
+}
+```
+
+最後に、`Post` コンポーネントを書き換えて、`dangerouslySetInnerHTML` を使って `contentHtml` をレンダーするようにしましょう。
+
+```js
+export default function Post({ postData }) {
+  return (
+    <Layout>
+      {postData.title}
+      <br />
+      {postData.id}
+      <br />
+      {postData.date}
+      <br />
+      <div dangerouslySetInnerHTML={{ __html: postData.contentHtml }} />
+    </Layout>
+  )
+}
+```
+
+もう一度、以下のページにアクセスしてみてください。
+
+- http://localhost:3000/posts/ssg-ssr
+- http://localhost:3000/posts/pre-rendering
+
+ブログのコンテンツが表示されているはずです。
+
+**画像**
+
+これでほぼ完了です。次は、各ページを磨き上げて完成させましょう。
+
+### 投稿ページを磨き上げる
+#### 投稿ページに `title` を追加する
+`pages/posts/[id].js` 内で、投稿データを使って `title` タグを追加しましょう。`next/head` をインポートし、`title` タグを追加します。
+
+```js
+import Head from 'next/head'
+
+export default function Post({ postData }) {
+  return (
+    <Layout>
+      <Head>
+        <title>{postData.title}</title>
+      </Head>
+      ...
+    </Layout>
+  )
+}
+```
+
+#### データのフォーマットを整える
+データをフォーマットするために、`date-fns` ライブラリを使用します。まずはインストールします。
+
+```bash
+npm install date-fns
+```
+
+次に、`components/date.js` ファイルに `Date` コンポーネントを作成します。
+
+```js
+import { parseISO, format } from 'date-fns'
+
+export default function Date({ dateString }) {
+  const date = parseISO(dateString)
+  return <time dateTime={dateString}>{format(date, 'LLLL d, yyyy')}</time>
+}
+```
+
+そうしたらそれを `pages/posts/[id].js` 内で使いましょう。
+
+```js
+// Add this line to imports
+import Date from '../../components/date'
+
+export default function Post({ postData }) {
+  return (
+    <Layout>
+      ...
+      {/* Replace {postData.date} with this */}
+      <Date dateString={postData.date} />
+      ...
+    </Layout>
+  )
+}
+```
+http://localhost:3000/posts/pre-rendering にアクセスすれば、「**January 1, 2020**」と日付が書かれているのが見えるはずです。
+
+#### CSS を追加する
+最後に、いくらか CSS を追加しましょう。`pages/posts/[id].js` の中に、`article` タグの下にあるコードをすべて書き、また、以下に示すとおりに CSS モジュールを使用してください。
+
+```js
+// Add this line
+import utilStyles from '../../styles/utils.module.css'
+
+export default function Post({ postData }) {
+  return (
+    <Layout>
+      <Head>
+        <title>{postData.title}</title>
+      </Head>
+      <article>
+        <h1 className={utilStyles.headingXl}>{postData.title}</h1>
+        <div className={utilStyles.lightText}>
+          <Date dateString={postData.date} />
+        </div>
+        <div dangerouslySetInnerHTML={{ __html: postData.contentHtml }} />
+      </article>
+    </Layout>
+  )
+}
+```
+
+http://localhost:3000/posts/pre-rendering にアクセスすれば、ページの見た目は少しよくなっているはずです。
+
+**画像**
+
+すばらしい！次にインデックスページを磨き上げれば完了です！
+
+### インデックスページを磨き上げる
+最後のステぷとして、インデックスページ（`pages/index.js`）を更新しましょう。
+
+具体的には、各投稿ページに対してのリンクを追加する必要があります。`Link` コンポーネントを使用していきますが、今回は少し違うことをする必要があります。
+
+動的ルーティングを持った持ったページにリンクを貼るには、`Link` コンポーネントを少し違うかたちで使う必要があります。我々のケースでは、`/posts/ssg-ssr` にリンクするのに、このように書く必要があります：
+
+```js
+<Link href="/posts/[id]" as="/posts/ssg-ssr">
+  <a>...</a>
+</Link>
+```
+
+見てわかるように、`href` には `[id]` を使い、`as` prop には実際のパス（`ssg-ssr`）を用いる必要があります。
+
+それでは実装してみましょう。まずは、`Link` と `Date` を `pages/index.js` 内でインポートしてください。
+
+```js
+import Link from 'next/link'
+import Date from '../components/date'
+```
+
+そうしたら、`Home` コンポーネントの下部近くで、`li` タグを以下で書き換えてください。
+
+```js
+<li className={utilStyles.listItem} key={id}>
+  <Link href="/posts/[id]" as={`/posts/${id}`}>
+    <a>{title}</a>
+  </Link>
+  <br />
+  <small className={utilStyles.lightText}>
+    <Date dateString={date} />
+  </small>
+</li>
+```
+
+各記事に対してリンクすることができているはずです。
+
+**画像**
+
+> うまく動いていないものがあるときは、コードが[このように](https://github.com/zeit/next-learn-starter/tree/master/api-routes-starter)なっているか確認してください。
+
+出来上がりです！このレッスンを終える前に、動的ルーティングを使うにあたっての Tips をいくつかご紹介します。
+
+### 動的ルーティングの詳細
+動的ルーティングについて深く知るには我々のドキュメンテーションをご覧ください。
+- [データフェッチング](https://nextjs.org/docs/basic-features/data-fetching)
+- [動的ルーティング](https://nextjs.org/docs/routing/dynamic-routes)
+
+しかしここでは、動的ルーティングについて知っておくべきいくつかの本質的な情報をお伝えします。
+
+#### 外部 API を取得する あるいは　データベースに問い合わせる
+`getStaticProps` のように、`getStaticPaths` はどんあデータソースからもデータを取得することができます。我々の例では、`getAllPostIds` （`getStaticPaths` によって使われます）は外部の API エンドポイントからデータをフェッチしてきても構わないのです。
+
+```js
+export async function getAllPostIds() {
+  // Instead of the file system,
+  // fetch post data from an external API endpoint
+  const posts = await fetch('..')
+  const postsJson = res.json()
+  return postsJson.map(post => {
+    return {
+      params: {
+        id: post.id
+      }
+    }
+  })
+}
+```
+
+#### 開発環境 vs 本番環境
+- 開発環境（`npm run dev` または `yarn dev`）では、`getStaticPaths` は毎回のリクエストごとに実行されます。
+- 本番環境では、`getStaticPaths` はビルド時に実行されます。
+
+#### Fallback
+`getStaticPaths` から `fallback: false` を return したことを思い出してください。これは何を意味するのでしょうか。
+
+もし `fallback` が `false` であれば、`getStaticPaths` から return されていないあらゆるパスは、アクセスすると **404 ページ** になります。
+
+`fallback` が `true` であれば、`getStaticProps` の挙動は異なります：
+- `getStaticPaths` から return されたパスはビルド時に HTML としてレンダーされます。
+- ビルド時に生成されなかったパスにアクセスしても 404 ページには **なりません**。代わりに、Next.js はそうしたパスへの最初のリクエストがあったときに、そのページの「fallback」バージョンを提供します（Fallback ページの詳細は後述します）。
+- バックグラウンドでは、Next.js はリクエストがあったパスを静的に生成します。同じページに対する後続（初回以降）のリクエストに対しては、その生成されたページが提供されます（ビルド時にプリレンダリングされた他のページと同じように）。
+
+この内容は本レッスンのスコープを超えてしまいますが、`fallback: true` としたときの詳細については[ドキュメンテーション](https://nextjs.org/docs/basic-features/data-fetching#fallback-pages)から詳しく知ることができます。
+
+#### すべてのルート（route）をキャッチ
+動的ルーティングは、ブラケットの中で三点ドットを加えることで、すべてのパスをキャッチするように拡張することができます。たとえば：
+- `pages/posts/[...id].js` は `/posts/a` とマッチしますが、`/posts/a/b`、`/posts/a/b/c` その他ともマッチします
+
+この場合、`getStaticPaths` では、以下のように `id` キーの値として配列を返さなければなりません。
+
+```js
+return [
+  {
+    params: {
+      // Statically Generates /posts/a/b/c
+      id: ['a', 'b', 'c']
+    }
+  }
+  //...
+]
+```
+
+そうすることで `params.id` は `getStaticProps` において配列となります。
+
+```js
+export async function getStaticProps({ params }) {
+  // params.id will be like ['a', 'b', 'c']
+}
+```
+
+もっと学ぶには[動的ルーティング](https://nextjs.org/docs/routing/dynamic-routes)のドキュメントをご覧ください。
+
+### ルーター（Router）
+Next.js のルーターにアクセスしたければ、`useRouter` フックを `next/router` からインポートすることで可能になります。詳しくは[router のドキュメント](https://nextjs.org/docs/routing/dynamic-routes)をご覧ください。
+
+### 404 ページ
+独自の 404 ページを作成するには、`pages/404.js` を作成してください。このファイルはビルド時に静的に生成されます。
+
+```js
+// pages/404.js
+export default function Custom404() {
+  return <h1>404 - Page Not Found</h1>
+}
+```
+
+詳細は[エラーページ](https://nextjs.org/docs/advanced-features/custom-error-page#404-page)のドキュメントをご覧ください。
+
+### 他の例
+`getStaticProps` や `getStaticPaths` を説明するためにいくつか例を作成しました。もっと学ぶにはこれらのソースコードを見てみてください。
+
+- [マークダウンファイルを使ったブログスターター](https://github.com/zeit/next.js/tree/canary/examples/blog-starter)（[デモ](https://next-blog-starter.now.sh/)）
+- [DatoCMS の例](https://github.com/zeit/next.js/tree/canary/examples/cms-datocms)（[デモ](https://next-blog-datocms.now.sh/)）
+- [TakeShape の例](https://github.com/zeit/next.js/tree/canary/examples/cms-takeshape)（[デモ](https://next-blog-takeshape.now.sh/)）
+- [Sanity の例](https://github.com/zeit/next.js/tree/canary/examples/cms-sanity)（[デモ](https://next-blog-sanity.now.sh/)）
+
+**これで出来上がりです！**
+
+次のレッスンでは、Next.js の API ルート機能について解説します。
+
+---
+## API ルート
+Next.js は API ルートをサポートしており、それにより、API エンドポイントを Node.js 関数として簡単に作成することができます。我々が作っているブログには必ずしも必要なものではありませんが、本レッスンではその使い方について手短にご説明します。
+
+### このレッスンで学ぶこと
+- API ルートの作り方
+- API ルートに関する便利な情報
+
+### セットアップ
+#### スターターコードをダウンロードする（任意）
+前のレッスンから継続して取り組んでいる場合は、以下はスキップできます。  
+そうでないのであれば、スターターコードをダウンロードおよびインストールし、以下のとおり実行してください。繰り返しになりますが、前回のレッスンを終えているのであれば以下は不要です。
+
+```bash
+# If you prefer Yarn, you can use `yarn create` instead of `npm init`
+npm init next-app nextjs-blog --example "https://github.com/zeit/next-learn-starter/tree/master/api-routes-starter"
+cd nextjs-blog
+# If you prefer Yarn, you can use `yarn dev` instead
+npm run dev
+```
+
+スターターコードをダウンロードしたら、以下を更新してください：
+- `public/images/profile.jpg` をあなたの写真にしてください（推奨：400px × 400px）
+- `components/layout.js` 内の `const name = '[Your Name]'` をあなたの名前にしてください。
+- `pages/index.js` 内の `<p>[Your Self Introduction]</p>` をあなたの自己紹介文にしてください。
+
+### API ルートを作成する
+API ルートを使うことで、Next.js アプリの中に API エンドポイントを作成することができます。そのためには、`pages/api` ディレクトリの中に、以下のフォーマットを持つ **関数** を作成します。
+
+```js
+// req = request data, res = response data
+export default (req, res) => {
+  // ...
+}
+```
+
+これはサーバレス関数（ラムダ（Lambda）としても知られる）としてデプロイできます。
+
+### 簡単な API エンドポイントを作成する
+それでは試してみましょう。`pages/api` の中に、以下に示すコードで `hello.js` というファイルを作成してください。
+
+```js
+export default (req, res) => {
+  res.status(200).json({ text: 'Hello' })
+}
+```
+
+http://localhost:3000/api/hello にアクセスしてみてください。`{"text":"Hello"}`と表示されているはずです。以下に留意してください。：
+- `req` は [http.IncomingMessage](https://nodejs.org/api/http.html#http_class_http_incomingmessage) のインスタンスであり、加えて、[ここ](https://nextjs.org/docs/api-routes/api-middlewares)にあるようなビルド済みのミドルウェアもあります。
+- `res` は [http.ServerResponse](https://nodejs.org/api/http.html#http_class_http_serverresponse) のインスタンスであり、加えて[ここ](https://nextjs.org/docs/api-routes/response-helpers)にあるようなヘルパー関数もあります。
+
+以上です！このレッスンを終える前に、API ルートを用いるうえでの Tips をいくつかご紹介します。
+
+### API ルートの詳細
+API ルートに関して深く知りたい場合は[ドキュメンテーション](https://nextjs.org/docs/api-routes/dynamic-api-routes)から情報を得ることができますが、ここでは API ルートについて知っておくべき重要な情報をご紹介します。
+
+#### `getStaticProps` あるいは `getStaticPaths` からは API ルートをフェッチしないこと
+`getStaticProps` あるいは `getStaticPaths` からは API ルートをフェッチすべき**ではありません**。そうする代わりに、`getStaticProps` あるいは `getStaticPaths` の中に直接サーバサイドのコードを書いてください（あるいはヘルパ関数を呼び出してください）。
+
+理由は次のとおりです：`getStaticProps` あるいは `getStaticPaths` はサーバサイドでのみ実行されます。クライアントサイドで実行されることはありませんし、ブラウザ用の JS バンドルに含まれることもありません。これは、データベースに直接問い合わせるようなコードを書くことができて、そういったコードがブラウザ側に送られることは無いということです。
+
+#### 良い使用例：フォーム入力を処理する
+API ルートの良い使用例は、フォーム入力の処理です。たとえば、ページ内にフォームを作成し、そのフォームから API ルートに `POST` リクエストを送信させることができます。そうしたら、それを直接データベースに保存できます。API ルートのコードはクライアント側のバンドルには含まれないので、安全にサーバ再度のコードを書くことができるというわけです。
+
+```js
+export default (req, res) => {
+  const email = req.body.email
+  // Then save email to your database, etc...
+}
+```
+
+#### プレビューモード
+静的生成は、ページがヘッドレス CMS からデータを取得する場合に便利です。しかし、ヘッドレス CMS で下書きを書いていて、その下書きをすぐにページ上で**プレビュー**したい場合には理想的ではありません。これらのページをビルド時ではなく**リクエスト時に**レンダリングし、公開用のコンテンツではなく下書きの内容を取得したいと思うでしょう。こうした特別なケースに限っては、静的生成をバイパスしてほしいことと思います。
+
+Nexrt.js はこの問題を解決する **プレビューモード** という機能を持っており、API ルートを利用しています。詳しくは、[プレビューモード](https://nextjs.org/docs/advanced-features/preview-mode)のドキュメントをご覧ください。
+
+#### 動的 API ルート
+API ルートは、通常のページと同様に動的なものにすることもできます。詳しくは[動的 API ルート](https://nextjs.org/docs/api-routes/dynamic-api-routes)のドキュメンテーションをご覧ください。
+
+**以上です！**
+次のレッスンでは、Next.js アプリを本番環境にデプロイする方法について説明します。
+
+---
+## Next.js アプリをデプロイする
+このレッスンでは、Next.js アプリを本番環境にデプロイします。
+
+Next.js を [Vercel](https://vercel.com/)（Next.js のクリエイターによって構築された Jamstack のデプロイプラットフォームです）にデプロイする方法を学びます。その他のデプロイの選択肢についてもご説明します。
+
+> 前提事項：このレッスンでは [GitHub アカウント](https://github.com/)が必要です。
+
+### このレッスンで学ぶこと
+- Next.js アプリを [Vercel](https://vercel.com/) にデプロイする方法
+- **DPS** ワークフロー：**D**evelop、**P**review、**S**hip
+- Next.js アプリを独自のホスティングプロバイダにデプロイする方法
+
+### スタータコードをダウンロードする（任意）
+前のレッスンから継続して取り組んでいる場合は、以下はスキップできます。  
+そうでないのであれば、スターターコードをダウンロードおよびインストールし、以下のとおり実行してください。繰り返しになりますが、前回のレッスンを終えているのであれば以下は不要です。
+
+```bash
+# If you prefer Yarn, you can use `yarn create` instead of `npm init`
+npm init next-app nextjs-blog --example "https://github.com/zeit/next-learn-starter/tree/master/api-routes-starter"
+cd nextjs-blog
+# If you prefer Yarn, you can use `yarn dev` instead
+npm run dev
+```
+
+スターターコードをダウンロードしたら、以下を更新してください：
+- `public/images/profile.jpg` をあなたの写真にしてください（推奨：400px × 400px）
+- `components/layout.js` 内の `const name = '[Your Name]'` をあなたの名前にしてください。
+- `pages/index.js` 内の `<p>[Your Self Introduction]</p>` をあなたの自己紹介文にしてください。
+
+### GitHub に push する
+デプロイの前に、まだしていなければ Next.js アプリを [GitHub](https://github.com/zeit/next.js) に push しましょう。
+
+これによりデプロイが簡単になります。
+
+- あなた個人の GitHub アカウントで `nextjs-blog` という新しいリポジトリを作成してください。
+- そのリポジトリは public でも private でも構いません。README やその他のファイルで初期化する必要は **ありません**。
+- 手助けが必要であれば、[GitHub のこちらのガイド](https://help.github.com/en/github/getting-started-with-github/create-a-repo) をご覧ください。
+
+そうしたら、
+- Next.js アプリ用に git リポジトリをローカルで初期化していない場合は初期化してください。
+- Next.js アプリを上記で作成した GitHub のリポジトリに push してください。
+
+GitHub に push するには、以下のコマンドを実行すればよいです（`<username>` はあなたの GitHub のユーザ名で置き換えてください）。
+
+```bash
+git remote add origin https://github.com/<username>/nextjs-blog.git
+git push -u origin master
+```
+
+GitHub リポジトリが準備できたら続けて次に進みましょう。
+
+### Vercel にデプロイする
+Next.js を本番環境にデプロイするのに最も簡単な方法は、Next.js のクリエイターによって開発された [Vercel](https://vercel.com/) プラットフォームを使うことです。
+
+Vercel は、静的 & JAMstack 開発とサーバレス関数をサポートするグローバル CDN を備えたオールインワンのプラットフォームです。Vercel は Next.js アプリをデプロイするのに最適な場所だと考えます。無料で利用開始できます（クレジットカードは必要ありません）。
+
+### Vercel アカウントを作成する
+まずは、https://vercel.com/signup にアクセスして Vercel アカウントをさくせい　してください。**Continue with GitHub** を選択してサインアッププロセスを完了してください。
+
+### **`nextjs-blog` リポジトリをインポートする**
+サインアップを終えたら、`nextjs-blog` リポジトリを Vercel に **インポート** してください。こちらから行うことができます：https://vercel.com/import/git
+
+- **Now for GitHub** をインストールする必要があります。**すべてのリポジトリ（All Repositories）** に対するアクセス権を与えることができます。
+- Now をインストールしたら、`nextjs-blog` をインポートしてください。
+
+以下の設定は *デフォルト値* を使うことができます。何か変更する必要はありません。Vercel は、Next.js アプリがあることを自動的に検知し、最適なビルド設定を選択してくれます。
+- プロジェクト名
+- ルートディレクトリ
+- ビルドコマンド
+- 出力されるディレクトリ
+- 開発用のコマンド
+
+デプロイを行うと、Next.js アプリはビルドを開始します。これは 1 分以内に完了するはずです。
+
+> **ヘルプを利用できます**：デプロイに失敗しても、[GitHub のディスカッション](https://github.com/zeit/next.js/discussions)でいつでも助けを得ることができます。デプロイについての詳細は[こちら](https://nextjs.org/docs/deployment)をご覧ください。
+
+ビルドが完了すると、デプロイ用の URL がいくつか表示されます。その URL のいずれかをクリックすうrと、 Next.js のスターターページがライブで表示されるはずです。
+
+おめでとうございます！Next.js アプリを本番環境にデプロイすることができました。次に、Vercel の詳細とおすすめのワークフローについて詳しく説明します。
+
+### Next.js と Vercel
+[Vercel](https://vercel.com/)
