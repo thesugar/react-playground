@@ -8,7 +8,7 @@ React で 0 からちゃんとした Web アプリケーションを構築する
 
 フレームワークを使えばこういった問題は解決できます。しかし、こういったフレームワークは適切な抽象度を兼ね備えたものでなければなりません。そうでなければあまり便利なものとは言えないでしょう。そうしたフレームワークはすばらしい「開発者経験（Developer Experience）」を提供し、コードを書いているときにあなたやあなたのチームがすばらしい経験を味わえるものである必要があります。
 
-### Next.js: The React Framework
+### Next.js: React のフレームワーク
 React フレームワークの Next.js を見ていきましょう。Next.js を使えば先ほど述べたあらゆる問題を解決できます。しかしより重要なことは、React アプリケーションを構築するときにあなたやあなたのチームが、まるで導かれるように成功するということなのです。
 
 Next.js には最高クラスの開発者経験があり、数多くの特徴が組み込まれています。例えば以下のような特徴があります。
@@ -88,7 +88,7 @@ http://localhost:3000 にアクセスすると以下のようなページが表�
 
 ( **画像** )
 
-> ヘルプが利用できます：もし詰まったら、[GitHub Discussions](https://github.com/zeit/next.js/discussions) から Next.js のコミュニティに連絡してください。
+> ヘルプが利用できます：もし詰まったら、[GitHub のディスカッション](https://github.com/zeit/next.js/discussions) から Next.js のコミュニティに連絡してください。
 
 次はこのページを編集してみましょう！
 
@@ -1404,7 +1404,7 @@ export default function Post({ postData }) {
 - `lib/posts.js` は[このようなコード](https://github.com/zeit/next-learn-starter/blob/master/dynamic-routes-step-1/lib/posts.js)になります。
 - （それでもうまく動かない場合は）残りのコードは[このようなコード](https://github.com/zeit/next-learn-starter/tree/master/dynamic-routes-step-1)になります。
 
-それでもまだ詰まっている場合は、[GitHub Discussions](https://github.com/zeit/next.js/discussions) からコミュニティにお気軽に質問してください。他の人がコードを見ることができるように、GitHub にあなたのコードを push してそれにリンクを貼っていただけるとありがたいです。
+それでもまだ詰まっている場合は、[GitHub のディスカッション](https://github.com/zeit/next.js/discussions) からコミュニティにお気軽に質問してください。他の人がコードを見ることができるように、GitHub にあなたのコードを push してそれにリンクを貼っていただけるとありがたいです。
 
 ### サマリー
 ここでまた、我々が行ったことを視覚的にまとめておきます。
@@ -1807,13 +1807,13 @@ API ルートは、通常のページと同様に動的なものにすること�
 ## Next.js アプリをデプロイする
 このレッスンでは、Next.js アプリを本番環境にデプロイします。
 
-Next.js を [Vercel](https://vercel.com/)（Next.js のクリエイターによって構築された Jamstack のデプロイプラットフォームです）にデプロイする方法を学びます。その他のデプロイの選択肢についてもご説明します。
+Next.js を [Vercel](https://vercel.com/)（Next.js の製作者たちによって構築された Jamstack のデプロイプラットフォームです）にデプロイする方法を学びます。その他のデプロイの選択肢についてもご説明します。
 
 > 前提事項：このレッスンでは [GitHub アカウント](https://github.com/)が必要です。
 
 ### このレッスンで学ぶこと
 - Next.js アプリを [Vercel](https://vercel.com/) にデプロイする方法
-- **DPS** ワークフロー：**D**evelop、**P**review、**S**hip
+- **DPS** ワークフロー：**D**evelop（開発）、**P**review（プレビュー）、**S**hip（シップ）
 - Next.js アプリを独自のホスティングプロバイダにデプロイする方法
 
 ### スタータコードをダウンロードする（任意）
@@ -1856,7 +1856,7 @@ git push -u origin master
 GitHub リポジトリが準備できたら続けて次に進みましょう。
 
 ### Vercel にデプロイする
-Next.js を本番環境にデプロイするのに最も簡単な方法は、Next.js のクリエイターによって開発された [Vercel](https://vercel.com/) プラットフォームを使うことです。
+Next.js を本番環境にデプロイするのに最も簡単な方法は、Next.js の製作者たちによって開発された [Vercel](https://vercel.com/) プラットフォームを使うことです。
 
 Vercel は、静的 & JAMstack 開発とサーバレス関数をサポートするグローバル CDN を備えたオールインワンのプラットフォームです。Vercel は Next.js アプリをデプロイするのに最適な場所だと考えます。無料で利用開始できます（クレジットカードは必要ありません）。
 
@@ -1878,11 +1878,221 @@ Vercel は、静的 & JAMstack 開発とサーバレス関数をサポートす�
 
 デプロイを行うと、Next.js アプリはビルドを開始します。これは 1 分以内に完了するはずです。
 
-> **ヘルプを利用できます**：デプロイに失敗しても、[GitHub のディスカッション](https://github.com/zeit/next.js/discussions)でいつでも助けを得ることができます。デプロイについての詳細は[こちら](https://nextjs.org/docs/deployment)をご覧ください。
+> **ヘルプを利用できます**：デプロイに失敗しても、[GitHub のディスカッション](https://github.com/zeit/next.js/discussions)でいつでも助けを得ることができます。デプロイについての詳細は[ドキュメント](https://nextjs.org/docs/deployment)をご覧ください。
 
 ビルドが完了すると、デプロイ用の URL がいくつか表示されます。その URL のいずれかをクリックすうrと、 Next.js のスターターページがライブで表示されるはずです。
 
 おめでとうございます！Next.js アプリを本番環境にデプロイすることができました。次に、Vercel の詳細とおすすめのワークフローについて詳しく説明します。
 
 ### Next.js と Vercel
-[Vercel](https://vercel.com/)
+[Vercel](https://vercel.com/) は Next.js の製作者たちによって作られており、Next.js へのサポートは最高級の水準です。Next.js アプリを Vercel にデプロイすると、デフォルトで以下のことが起こります。
+
+- 静的生成を使用しているページとアセット（JavaScript、CSS、画像、フォント等）がきわめて高速な [Vercel Edge Network](https://vercel.com/smart-cdn) から自動的に提供（サーブ）されます。
+- サーバサイドレンダリングを使用するページと API ルートは自動的に、他とは分離された [サーバレス関数](https://vercel.com/docs/v2/serverless-functions/introduction) になります。これによって、ページのレンダリングと API リクエストを限りなくスケールできます。
+
+Vercel にはさらに多くの機能があります。たとえば：
+- **カスタムドメイン**：一度 Vercel にデプロイしてしまえば、Next.js アプリにカスタムドメインを割り当てることができます。こちらの [ドキュメンテーション](https://vercel.com/docs/v2/custom-domains) をご覧ください。
+- **環境変数**：環境変数を Vercel 上で設定することも可能です。こちらから [ドキュメンテーション](https://vercel.com/docs/v2/build-step#environment-variables) をご覧ください。そして、これらの[環境変数を Next.js アプリで使う](https://nextjs.org/docs/api-reference/next.config.js/environment-variables)ことができます。
+- **自動 HTTPS**：HTTPS はデフォルトで有効になっており（カスタムドメインを含む）、追加設定は必要ありません。SSL 証明書は自動更新されます。
+
+Vercel プラットフォームについてもっと詳しく知るには [我々のドキュメンテーション](https://vercel.com/docs) をご一読ください。
+
+### 各 push ごとにデプロイをプレビューする
+> 以下のステップは**任意**です。実際に試してみてもよいですし、読み通すだけでも構いません。
+
+Vercel にデプロイを行ったあと、可能であれば以下を行ってみてください。
+- アプリに新しい**ブランチ**を作成する
+- いくつか変更を加えて、GitHub に push する
+- 新たな**プルリクエスト**（[GitHubのヘルプページ](https://help.github.com/en/github/collaborating-with-issues-and-pull-requests/creating-a-pull-request)）を作成する
+
+プルリクエストのページで `now` bot によるコメントが表示されるはずです。
+
+**画像**
+
+コメント内の **プレビュー** URL をクリックしてみてください。あなたが先ほど加えた変更が見えるようになっているはずです。
+
+プルリクエストが開いていると、Vercel は push があるたびにそのブランチの **プレビューデプロイ** を自動的に作成します。プレビュー URL はつねに最新のプレビューデプロイを指すものになります。
+
+このプレビュー URL は共同作業者と共有してすぐにフィードバックを得ることができます。
+
+プレビューデプロイが問題ないようであれば、**`master` にマージしましょう**。そうすれば、Vercel は自動的に本番用のデプロイを行います。
+
+### 開発、プレビュー、シップ
+ここまでで、我々が **DPS** : **D**evelop（開発）、**P**review（プレビュー）、**S**hip（シップ）と呼んでいるワークフローを一通り体験しました。
+
+- **開発**：Next.js でコードを書き、Next.js の開発サーバを使ってホットリロードの機能を利用しました。
+- **プレビュー**：GitHub のブランチに変更を push し、URL から確認することができるプレビューデプロイが Vercel によって作成されました。このプレビュー URL は他の人と共有してフィードバックを受けることができます。*コードレビュー*に加えて、*デプロイのプレビュー*も行うことができるのです。
+- **シップ**：プルリクエストを `master` ブランチにマージして、本番環境にシップしました。
+
+Next.js アプリを開発するときにはこのワークフローを用いることを強く推奨します。このワークフローは、アプリ開発のイテレーションをすばやく回すのに役立つでしょう。
+
+### ホスティングの他の選択肢
+Next.js は、Node.js をサポートしているホスティングプロバイダであればどこにでもデプロイすることができます。
+
+ここまでの指示通りに進めてきていれば、手元の `package.json` には `build` と `start` スクリプトが書かれていることと思います：
+
+```json
+{
+  "scripts": {
+    "dev": "next",
+    "build": "next build",
+    "start": "next start"
+  }
+}
+```
+
+あなたが使おうとしているホスティングプロバイダで `build` スクリプトを実行すると、`.next` フォルダの中に本番用アプリケーションがビルドされます。
+
+```bash
+npm run build
+```
+
+ビルドが終わったら `start` スクリプトを実行することで、ハイブリッドページをサポートする Node.js サーバを起動でき、静的生成によるページとサーバサイドレンダリングによるページの両方が提供（サーブ）されます。そのサーバで API ルートを扱うこともできます。
+
+```bash
+npm run start
+```
+
+> **Tip**: `package.json` の `start` スクリプトをカスタマイズして `PORT` パラメータを受け取るようにするには、次のように書き換えます：`"start": "next start -p $PORT"`
+
+以上です！Next.js のデプロイに関して疑問点があれば、[GitHub のディスカッション](https://github.com/zeit/next.js/discussions)から我々のコミュニティに質問することができます。
+
+### 最後に
+おめでとうございます、ベーシックコースのレッスンはすべて完了です。今後のおすすめのステップをご紹介します。
+
+#### Next.js アプリをシェアしよう
+このチュートリアルで作成したアプリを Twitter でシェアすることをおすすめします。その際、我々のチームが見に行けるように、 [@vercel](https://twitter.com/vercel) にメンションを飛ばしてください！このチュートリアルへのフィードバックもお待ちしております。
+
+#### TypeScript を Next.js と組み合わせて使う
+もし [TypeScript](https://www.typescriptlang.org/) をお好みなら、次のセクションで TypeScript を Next.js と一緒に使う方法を学ぶことができます。
+
+#### 次に学ぶべきこと
+もっと知るには以下のドキュメンテーションをチェックしてください。
+- [データフェッチ](https://nextjs.org/docs/basic-features/data-fetching): データフェッチについて深く知る
+- [Next.js の設定](https://nextjs.org/docs/api-reference/next.config.js/introduction): 特に、[環境変数](https://nextjs.org/docs/api-reference/next.config.js/environment-variables) に関するドキュメントが役に立つでしょう
+- [AMP サポート](https://nextjs.org/docs/advanced-features/amp-support/introduction): Next.js を使えば簡単に AMP ページを作成することができます
+
+#### 会話に参加する
+Next.js に関する質問があればそれがどんなことであれ、いつでも [GitHub のディスカッション](https://github.com/zeit/next.js/discussions) からコミュニティへの質問を歓迎します。
+
+---
+## TypeScript
+Next.js では初期設定のままで（追加設定不要で）[TypeScript](https://www.typescriptlang.org/) を書くことができます。このレッスンでは、ベーシックコースで作成した[ブログアプリ](https://next-learn-starter.now.sh/)を TypeScript を使ったものに書き換えていきます。
+
+### このレッスンで学ぶこと
+- TypeScript を使えるように Next.js をセットアップする方法
+- Next.js 固有の型（types）を使う方法
+- ブログアプリを TypeScript を使ったものに書き換える方法
+
+### スタータコードをダウンロードする（任意）
+前のレッスンから継続して取り組んでいる場合は、以下はスキップできます。  
+そうでないのであれば、スターターコードをダウンロードおよびインストールし、以下のとおり実行してください。繰り返しになりますが、前回のレッスンを終えているのであれば以下は不要です。
+
+```bash
+# If you prefer Yarn, you can use `yarn create` instead of `npm init`
+npm init next-app nextjs-blog --example "https://github.com/zeit/next-learn-starter/tree/master/basics-final"
+cd nextjs-blog
+# If you prefer Yarn, you can use `yarn dev` instead
+npm run dev
+```
+
+スターターコードをダウンロードしたら、以下を更新してください：
+- `public/images/profile.jpg` をあなたの写真にしてください（推奨：400px × 400px）
+- `components/layout.js` 内の `const name = '[Your Name]'` をあなたの名前にしてください。
+- `pages/index.js` 内の `<p>[Your Self Introduction]</p>` をあなたの自己紹介文にしてください。
+
+### tsconfig.json を作成する
+取り掛かっていくために、**空の** `tsconfig.json` ファイルをプロジェクトのルート（root）に作成してください。
+
+```bash
+touch tsconfig.json
+```
+
+ここで、開発サーバを立ち上げてみて（すでに起動している場合は再起動して）ください（`npm run dev` または `yarn dev`）。そうすると、以下のように何か警告が出てくると思います：
+
+> It looks like you're trying to use TypeScript but do not have the required package(s) installed.
+
+表示されるインストラクションにしたがって TypeScript をインストールしてください。
+
+```bash
+# npm を使っている場合
+npm install --save-dev typescript @types/react @types/node
+
+# Yarn を使っている場合
+yarn add --dev typescript @types/react @types/node
+```
+
+いま、もう一度開発サーバを**起動**してみてください。サーバが動き出したあと、Next.js は：
+- `tsconfig.json` ファイル（上記で空ファイルとして作成したもの）に記述を埋めてくれます。このファイルはカスタマイズ可能です。
+- `next-env.d.ts` ファイルを作成します。これによって Next.js の型が TypeScript のコンパイラによって拾われるようになります。このファイルはいじら**ない**でください。
+
+これでもう Next.js のアプリに TypeScript を使うことができます。Next.js アプリを TypeScript を用いたものに変換する方法をご説明します。
+
+### Next.js 固有の型
+ここでは Next.js 固有の型（Types）をいくつか紹介します。
+
+#### 静的生成とサーバサイドレンダリング
+`getStaticProps`、`getStaticPaths`、`getServerSideProps` 用に、それぞれ `GetStaticProps`、`GetStaticPaths`、`GetServerSideProps` 型を使用できます。
+
+```ts
+import { GetStaticProps, GetStaticPaths, GetServerSideProps } from 'next'
+
+export const getStaticProps: GetStaticProps = async context => {
+  // ...
+}
+
+export const getStaticPaths: GetStaticPaths = async () => {
+  // ...
+}
+
+export const getServerSideProps: GetServerSideProps = async context => {
+  // ...
+}
+```
+
+#### API ルート
+以下は、API ルート用に組み込まれている型の使い方の例です。
+
+```ts
+import { NextApiRequest, NextApiResponse } from 'next'
+
+export default (req: NextApiRequest, res: NextApiResponse) => {
+  // ...
+}
+```
+
+#### カスタムの `App`
+`pages/_app.js` を `pages/_app.tsx` にして、`AppProps` というビルトインの型を使用することができます。次のようになります：
+
+```ts
+import { AppProps } from 'next/app'
+
+function App({ Component, pageProps }: AppProps) {
+  return <Component {...pageProps} />
+}
+
+export default App
+```
+
+#### アプリを書き換える
+ベーシックコースのレッスンで作成したブログアプリを TypeScript を用いたものに書き換えるには、以下のファイルを更新してください。
+
+- `components/date.js`: [このコード](https://github.com/zeit/next-learn-starter/blob/master/typescript-final/components/date.tsx) を使って `date.tsx` に書き換えてください
+- `components/layout.js`: [このコード](https://github.com/zeit/next-learn-starter/blob/master/typescript-final/components/layout.tsx) を使って `layout.tsx` に書き換えてください
+- `lib/posts.js`: [このコード](https://github.com/zeit/next-learn-starter/blob/master/typescript-final/lib/posts.ts) を使って `posts.ts` に書き換えてください
+- `pages/posts/[id].js`: [このコード](https://github.com/zeit/next-learn-starter/blob/master/typescript-final/pages/posts/%5Bid%5D.tsx) を使って `[id].tsx` に書き換えてください
+- `pages/index.js`: [このコード](https://github.com/zeit/next-learn-starter/blob/master/typescript-final/pages/index.tsx) を使って `index.tsx` に書き換えてください
+- `pages/api/hello.js`: [このコード](https://github.com/zeit/next-learn-starter/blob/master/typescript-final/pages/api/hello.ts) を使って `hello.ts` に書き換えてください
+
+また、`remark-html` はパッケージ内や [DefinitelyTypes](https://github.com/DefinitelyTyped/DefinitelyTyped) に型定義がないので、トップレベルに `global.d.ts` ファイルを作成して型宣言を加えてください。
+
+```ts
+declare module 'remark-html' {
+  const html: any
+  export default html
+}
+```
+
+以上です！これで TypeScript でアプリが動くようになりました。
+
+> TypeScript で Next.js を使うことについてもっと知るためには、[我々のドキュメンテーション](https://nextjs.org/docs/basic-features/typescript) をご覧ください。
