@@ -4,7 +4,15 @@ import { getAllPostIds, getPostData } from '../../lib/posts'
 import Head from 'next/head'
 import Date from '../../components/date'
 
-const Post = ({ postData }) => {
+type PostProps = {
+    postData: {
+        title: string
+        date: string
+        contentHtml: string
+    }
+}
+
+const Post = ({ postData }: PostProps ) => {
     return (
         <Layout>
             <Head>
@@ -29,7 +37,13 @@ const getStaticPaths = async () => {
     }
 }
 
-const getStaticProps = async ({ params }) => {
+type Props = {
+    params: {
+        id : string
+    }
+}
+
+const getStaticProps = async ({ params } : Props ) => {
     const postData = await getPostData(params.id)
     return {
         props: {

@@ -6,7 +6,7 @@ import html from 'remark-html'
 
 const postsDirectory = path.join(process.cwd(), 'posts')
 
-const getSortedPostsData = () => {
+export const getSortedPostsData = () => {
     // /posts 配下のファイル名を取得する
     const fileNames = fs.readdirSync(postsDirectory);
     const allPostsData = fileNames.map(fileName => {
@@ -23,16 +23,16 @@ const getSortedPostsData = () => {
         // データを id と合わせる
         return {
             id,
-            ...matterResult.data
+            ...matterResult.data as { date: string; title: string }
         }
     })
 
     return allPostsData.sort((a, b) => {
-        return (a.date - b.date)
+        return a.date < b.date ? 1 : -1
     })
 }
 
-const getAllPostIds = () => {
+export const getAllPostIds = () => {
     const fileNames = fs.readdirSync(postsDirectory);
 
     return fileNames.map(fileName => {
@@ -44,7 +44,7 @@ const getAllPostIds = () => {
     })
 }
 
-const getPostData = async id => {
+export const getPostData = async (id: string) => {
     const fullPath = path.join(postsDirectory, `${id}.md`)
     const fileContents = fs.readFileSync(fullPath, 'utf8')
 
@@ -57,8 +57,6 @@ const getPostData = async id => {
     return {
         id,
         contentHtml, // is a content of an article
-        ...matterResult.data // is metadata of an article
+        ...matterResult.data as { date: string; title: string } // is metadata of an article
     }
 }
-
-module.exports = { getSortedPostsData, getAllPostIds, getPostData }

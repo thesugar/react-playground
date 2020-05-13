@@ -5,7 +5,15 @@ import { getSortedPostsData } from '../lib/posts'
 import Link from 'next/link'
 import Date from '../components/date'
 
-export default function Home({ allPostsData }) {
+type Props= {
+  allPostsData: {
+  id : string
+  date: string
+  title: string
+  }[]
+}
+
+export default function Home({ allPostsData }: Props) {
   return (
     <Layout home>
       <Head>
@@ -23,7 +31,7 @@ export default function Home({ allPostsData }) {
         <ul className={utilStyles.list}>
           {allPostsData.map(({ id, date, title }) => (
             (<li className={utilStyles.listItem} key={id}>
-              <Link href="/posts/[id]" href={`posts/${id}`}>
+              <Link href="/posts/[id]" as={`posts/${id}`}>
                 <a>{title}</a>
               </Link>
               <br />

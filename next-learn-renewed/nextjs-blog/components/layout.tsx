@@ -4,9 +4,14 @@ import utilStyles from '../styles/utils.module.css'
 import Link from 'next/link'
 
 const name = 'thesugar'
-export const siteTitle = 'Next.js Sample Website'
+export const siteTitle = 'thesugar\'s blog'
 
-export default function Layout({ children, home }) {
+type Prop = {
+  children: React.ReactNode
+  home?: boolean
+}
+
+export default function Layout({ children, home } : Prop) {
   return (
     <div className={styles.container}>
       <Head>
